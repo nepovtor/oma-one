@@ -5,3 +5,4 @@ node_modules/
 test-output/
 var/
 .oma-postgres/
+.taste-skill/
