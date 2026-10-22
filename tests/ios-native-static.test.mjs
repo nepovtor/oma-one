@@ -10,6 +10,15 @@ test('native iOS shell includes five original OMA sections and eight OMA ONE mod
  for(const feature of ['zerobuy','antifail','domino','synccity','proof','dna','forge','pulse'])assert.match(src,new RegExp(`case \\.${feature}`));
  for(const screen of ['HomeScreen','CatalogScreen','CartScreen','FavoritesScreen','ProfileScreen','ONEHub','PlannerScreen','FeatureScreen'])assert.ok(src.includes(`struct ${screen}`),screen);
 });
+test('native feedback is visual, confirms cart additions, and has no haptics',async()=>{
+ const src=await read('ios/OMAOne/ContentView.swift');
+ assert.match(src,/struct OmaPressButtonStyle/);
+ assert.match(src,/accessibilityReduceMotion/);
+ assert.match(src,/struct AddToCartButton/);
+ assert.match(src,/showingAdded \? "Добавлено"/);
+ assert.match(src,/kitAdded \? "Комплект добавлен"/);
+ assert.doesNotMatch(src,/UI(?:Impact|Selection|Notification)FeedbackGenerator|AudioServicesPlaySystemSound/);
+});
 test('iOS native demo does not require an unavailable fixed Mac hostname',async()=>{
  const swift=await read('ios/OMAOne/WebApp.swift');
  const plist=await read('ios/OMAOne/Info.plist');

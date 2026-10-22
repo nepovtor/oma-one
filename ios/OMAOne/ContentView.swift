@@ -14,6 +14,22 @@ private enum Style {
     static let hero = blue
 }
 
+private enum OmaMotion {
+    static let change = Animation.spring(response: 0.28, dampingFraction: 0.82)
+    static let press = Animation.easeOut(duration: 0.14)
+}
+
+private struct OmaPressButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.975 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(reduceMotion ? nil : OmaMotion.press, value: configuration.isPressed)
+    }
+}
+
 private func categorySymbol(_ category: String) -> String {
     switch category {
     case "Сантехника": "drop"
@@ -332,8 +348,8 @@ struct ContentView: View {
             HStack(spacing:0) {
                 ForEach(Tab.allCases,id:\.self) { item in
                     Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        withAnimation(reduceMotion ? nil : .spring(response:0.34,dampingFraction:0.82)) { tab = item }
+                        guard tab != item else { return }
+                        withAnimation(reduceMotion ? nil : OmaMotion.change) { tab = item }
                         if item == .catalog { category = nil }
                     } label: {
                         VStack(spacing:5) {
@@ -344,6 +360,7 @@ struct ContentView: View {
                                     Text("\(store.cartCount)").font(.system(size:9,weight:.bold))
                                         .foregroundColor(.white).padding(4).background(Style.blue).clipShape(Circle())
                                         .offset(x:10,y:-5)
+                                        .contentTransition(.numericText())
                                 }
                             }
                             Text(item.title).font(.system(size:10,weight:tab == item ? .bold : .medium,design:.rounded)).lineLimit(1)
@@ -357,7 +374,7 @@ struct ContentView: View {
                         }
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(OmaPressButtonStyle())
                     .accessibilityLabel(item.title)
                 }
             }
@@ -367,6 +384,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(.light)
         .tint(Style.blue)
+        .buttonStyle(OmaPressButtonStyle())
         .sheet(isPresented:$showONE,onDismiss:{startPlanner=false}) {
             NavigationStack { ONEHub(store:store,showONE:$showONE,startPlanner:$startPlanner,selectedTab:$tab,showEngine:$showEngine) }
                 .tint(Style.blue)
@@ -428,7 +446,7 @@ private struct SearchField: View {
             .foregroundColor(.gray)
             .padding(.horizontal,17).frame(height:49)
             .modifier(OmaCardSurface(radius:16))
-        }.buttonStyle(.plain)
+        }.buttonStyle(OmaPressButtonStyle())
     }
 }
 
@@ -453,7 +471,7 @@ private struct HomeScreen: View {
                         Text("Покупки и проекты — в одном месте")
                             .font(.system(size:14)).foregroundStyle(.secondary)
                     }
-                    Button { UIImpactFeedbackGenerator(style:.light).impactOccurred(); startPlanner = true; showONE = true } label: {
+                    Button { startPlanner = true; showONE = true } label: {
                         VStack(alignment:.leading,spacing:13) {
                             HStack {
                                 Text("OMA ONE · Мой дом").font(.system(size:14,weight:.semibold))
@@ -476,7 +494,7 @@ private struct HomeScreen: View {
                         .frame(maxWidth:.infinity,alignment:.leading).padding(20)
                         .foregroundStyle(.white)
                         .background(Style.hero,in:RoundedRectangle(cornerRadius:22))
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(OmaPressButtonStyle())
 
                     VStack(alignment:.leading,spacing:12) {
                         Text("Быстрый доступ")
@@ -494,10 +512,10 @@ private struct HomeScreen: View {
                             .font(.system(size:19,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
                         Button { category = "Инструмент"; selectedTab = .catalog } label: {
                             categoryRow("Инструменты","Для ремонта и сборки","hammer")
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(OmaPressButtonStyle())
                         Button { category = "Сантехника"; selectedTab = .catalog } label: {
                             categoryRow("Сантехника","Для кухни и ванной","drop")
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(OmaPressButtonStyle())
                     }
                     Text("Неофициальный конкурсный прототип · данные демонстрационные")
                         .font(.system(size:12)).foregroundStyle(.secondary)
@@ -516,7 +534,7 @@ private struct HomeScreen: View {
             .frame(maxWidth:.infinity,minHeight:66,alignment:.leading)
             .padding(16).modifier(OmaCardSurface(radius:20))
             .foregroundStyle(Style.ink)
-        }.buttonStyle(.plain)
+        }.buttonStyle(OmaPressButtonStyle())
     }
     private func categoryRow(_ title:String,_ detail:String,_ symbol:String) -> some View {
         HStack(spacing:15) {
@@ -574,7 +592,7 @@ private struct CatalogScreen: View {
                                 Spacer()
                                 Image(systemName:"arrow.right").font(.system(size:15,weight:.semibold))
                             }.foregroundStyle(Style.ink).padding(16).modifier(OmaCardSurface(radius:20))
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(OmaPressButtonStyle())
                         Text("Категории").font(.system(size:19,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
                         LazyVGrid(columns:grid,spacing:12) {
                             ForEach(Array(availableCategories.dropLast().enumerated()),id:\.element.id) { index, entry in
@@ -589,7 +607,7 @@ private struct CatalogScreen: View {
                                     .frame(maxWidth:.infinity,minHeight:105,alignment:.leading).padding(15)
                                     .foregroundStyle(Style.blue)
                                     .background(index.isMultiple(of:2) ? Style.paleBlue : Style.paleOrange,in:RoundedRectangle(cornerRadius:20))
-                                }.buttonStyle(.plain)
+                                }.buttonStyle(OmaPressButtonStyle())
                             }
                         }
                         if let entry = availableCategories.last {
@@ -602,7 +620,7 @@ private struct CatalogScreen: View {
                                     Image(systemName:"chevron.right").font(.system(size:12,weight:.semibold))
                                 }.foregroundStyle(Style.blue).padding(16)
                                     .background(Style.paleBlue,in:RoundedRectangle(cornerRadius:20))
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(OmaPressButtonStyle())
                         }
                     } else {
                         let results = store.products.filter { product in
@@ -634,6 +652,7 @@ private struct ProductCard: View {
     let p:Product
     @ObservedObject var store:Store
     @State private var showingDetail = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         VStack(alignment:.leading,spacing:10) {
             Button { showingDetail = true } label: {
@@ -647,17 +666,14 @@ private struct ProductCard: View {
                     Text(rub(p.price)).font(.system(size:18,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
                         .contentTransition(.numericText())
                 }.frame(maxWidth:.infinity,alignment:.leading)
-            }.buttonStyle(.plain)
+            }.buttonStyle(OmaPressButtonStyle())
             HStack(spacing:8) {
-                Button { store.add(p.id); UIImpactFeedbackGenerator(style:.light).impactOccurred() } label:{
-                    Text("В корзину").font(.system(size:12,weight:.semibold))
-                        .frame(maxWidth:.infinity).frame(height:42).foregroundColor(.white)
-                        .background(Style.blue,in:RoundedRectangle(cornerRadius:10))
-                }.accessibilityLabel("Добавить \(p.name) в корзину")
-                Button { store.toggleFavorite(p.id) } label:{
+                AddToCartButton(p:p,store:store,compact:true)
+                Button { withAnimation(reduceMotion ? nil : OmaMotion.change) { store.toggleFavorite(p.id) } } label:{
                     Image(systemName:store.favorites.contains(p.id) ? "heart.fill" : "heart")
                         .frame(width:42,height:42).foregroundColor(Style.orange)
                         .background(Style.paleOrange,in:RoundedRectangle(cornerRadius:10))
+                        .scaleEffect(store.favorites.contains(p.id) && !reduceMotion ? 1.07 : 1)
                 }.accessibilityLabel(store.favorites.contains(p.id) ? "Убрать из избранного" : "Добавить в избранное")
             }
         }.padding(12).frame(maxWidth:.infinity,alignment:.leading).modifier(OmaCardSurface(radius:20))
@@ -668,10 +684,54 @@ private struct ProductCard: View {
     }
 }
 
+private struct AddToCartButton: View {
+    let p: Product
+    @ObservedObject var store: Store
+    var compact = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showingAdded = false
+    @State private var confirmationSequence = 0
+
+    private var atLimit: Bool { (store.cart[p.id] ?? 0) >= p.stock }
+
+    var body: some View {
+        Button {
+            guard !atLimit else { return }
+            withAnimation(reduceMotion ? nil : OmaMotion.change) {
+                store.add(p.id)
+                showingAdded = true
+                confirmationSequence += 1
+            }
+        } label: {
+            HStack(spacing: compact ? 4 : 8) {
+                if showingAdded { Image(systemName:"checkmark").fontWeight(.bold) }
+                Text(showingAdded ? "Добавлено" : compact ? "В корзину" : "Добавить в корзину")
+                    .lineLimit(1)
+            }
+            .font(.system(size:compact ? 12 : 16,weight:.semibold))
+            .frame(maxWidth:.infinity).frame(height:compact ? 42 : 52)
+            .foregroundStyle(.white)
+            .background(showingAdded ? Style.blue.opacity(0.84) : Style.blue,
+                        in:RoundedRectangle(cornerRadius:compact ? 10 : 16))
+        }
+        .buttonStyle(OmaPressButtonStyle())
+        .disabled(atLimit)
+        .accessibilityLabel(showingAdded ? "\(p.name) добавлен в корзину" : "Добавить \(p.name) в корзину")
+        .accessibilityHint(atLimit ? "Достигнуто демонстрационное наличие" : "")
+        .task(id:confirmationSequence) {
+            guard confirmationSequence > 0 else { return }
+            try? await Task.sleep(nanoseconds:1_300_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : OmaMotion.change) { showingAdded = false }
+        }
+    }
+}
+
 private struct ProductDetailScreen: View {
     let p:Product
     @ObservedObject var store:Store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
@@ -696,16 +756,12 @@ private struct ProductDetailScreen: View {
         }.background(Style.soft)
             .safeAreaInset(edge:.bottom) {
                 HStack(spacing:12) {
-                    Button { store.toggleFavorite(p.id) } label: {
+                    Button { withAnimation(reduceMotion ? nil : OmaMotion.change) { store.toggleFavorite(p.id) } } label: {
                         Image(systemName:store.favorites.contains(p.id) ? "heart.fill" : "heart")
                             .frame(width:52,height:52).foregroundStyle(Style.orange)
                             .modifier(OmaCardSurface(radius:16))
                     }.accessibilityLabel(store.favorites.contains(p.id) ? "Убрать из избранного" : "Добавить в избранное")
-                    Button { store.add(p.id); UIImpactFeedbackGenerator(style:.light).impactOccurred() } label: {
-                        Text("Добавить в корзину").font(.system(size:16,weight:.semibold))
-                            .frame(maxWidth:.infinity).frame(height:52).foregroundStyle(.white)
-                            .background(Style.blue,in:RoundedRectangle(cornerRadius:16))
-                    }
+                    AddToCartButton(p:p,store:store)
                 }.padding(.horizontal,18).padding(.vertical,10).background(.white)
             }
             .navigationTitle("Товар · демо").navigationBarTitleDisplayMode(.inline)
@@ -716,6 +772,7 @@ private struct ProductDetailScreen: View {
 private struct CartScreen: View {
     @ObservedObject var store:Store
     @Binding var selectedTab:Tab
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var confirm = false
     var body: some View {
         VStack(spacing:0) {
@@ -753,16 +810,18 @@ private struct CartScreen: View {
                                     }
                                     HStack {
                                         HStack(spacing:0) {
-                                            Button {store.change(id,delta:-1)} label:{Image(systemName:"minus").frame(width:44,height:44)}
+                                            Button {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.change(id,delta:-1)}} label:{Image(systemName:"minus").frame(width:44,height:44)}
                                                 .accessibilityLabel("Уменьшить количество \(p.name)")
                                             Text("\(store.cart[id] ?? 0)").font(.system(size:15,weight:.semibold))
                                                 .monospacedDigit().frame(minWidth:30)
-                                            Button {store.change(id,delta:1)} label:{Image(systemName:"plus").frame(width:44,height:44)}
+                                                .contentTransition(.numericText())
+                                            Button {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.change(id,delta:1)}} label:{Image(systemName:"plus").frame(width:44,height:44)}
                                                 .accessibilityLabel("Увеличить количество \(p.name)")
                                         }.foregroundStyle(Style.blue).background(Style.paleBlue,in:Capsule())
                                         Spacer()
                                         Text(rub(p.price * Double(store.cart[id] ?? 0)))
                                             .font(.system(size:16,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
+                                            .contentTransition(.numericText())
                                     }
                                 }.padding(14).modifier(OmaCardSurface(radius:20))
                             }
@@ -770,7 +829,7 @@ private struct CartScreen: View {
                     }.padding(18)
                 }
                 VStack(spacing:12) {
-                    HStack {Text("Итого").font(.system(size:16));Spacer();Text(rub(store.cartTotal)).font(.system(size:22,weight:.bold,design:.rounded))}
+                    HStack {Text("Итого").font(.system(size:16));Spacer();Text(rub(store.cartTotal)).font(.system(size:22,weight:.bold,design:.rounded)).contentTransition(.numericText())}
                     Text("Демо-заказ · оплата и доставка не выполняются").font(.system(size:12)).foregroundColor(.secondary)
                     Button {confirm=true} label:{ Text("Оформить демо-заказ").font(.system(size:16,weight:.semibold)).frame(maxWidth:.infinity).frame(height:50).background(Style.blue,in:RoundedRectangle(cornerRadius:14)).foregroundColor(.white) }
                 }.padding(18).background(.white)
@@ -893,7 +952,7 @@ private struct ProfileScreen: View {
             HStack(spacing:17){Image(systemName:icon).font(.system(size:22,weight:.light)).frame(width:29);Text(name).font(.system(size:16));Spacer();Image(systemName:"chevron.right").font(.system(size:12)).foregroundColor(.gray)}
                 .foregroundColor(Style.ink).frame(height:51).padding(.horizontal,10)
                 .modifier(OmaCardSurface(radius:15))
-        }.buttonStyle(.plain)
+        }.buttonStyle(OmaPressButtonStyle())
     }
 }
 
@@ -989,7 +1048,7 @@ private struct ONEHub: View {
                                     Image(systemName:"chevron.right").font(.system(size:12,weight:.semibold)).foregroundColor(.secondary)
                                 }.padding(15).frame(maxWidth:.infinity,minHeight:66,alignment:.leading)
                                     .modifier(OmaCardSurface(radius:18))
-                            }.buttonStyle(.plain)
+                            }.buttonStyle(OmaPressButtonStyle())
                         }
                     }
                 }
@@ -1044,6 +1103,7 @@ private struct PlannerScreen: View {
     @ObservedObject var store:Store
     @Binding var showONE:Bool
     @Binding var selectedTab:Tab
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scenario:Scenario = .faucet
     @State private var budget:Double = 250
     @State private var area:Double = 4
@@ -1051,6 +1111,7 @@ private struct PlannerScreen: View {
     @State private var useOwned = true
     @State private var substrate = "Бетон"
     @State private var success = false
+    @State private var kitAdded = false
     var allCost:Double {scenario.requirements.reduce(0){$0 + (store.product($1.productId)?.price ?? 0) * Double($1.qty)}}
     var materialCost:Double {scenario.requirements.reduce(0){total, req in
         let ownedCount = (useOwned && store.owned.contains(req.productId)) ? 1 : 0
@@ -1125,15 +1186,17 @@ private struct PlannerScreen: View {
                             .font(.system(size:12,weight:.medium)).foregroundStyle(Style.orange)
                     }
                     Button {
-                        store.addKit(scenario.requirements,excludeOwned:useOwned)
-                        selectedTab = .cart
-                        showONE = false
+                        withAnimation(reduceMotion ? nil : OmaMotion.change) {
+                            store.addKit(scenario.requirements,excludeOwned:useOwned)
+                            kitAdded = true
+                        }
                     } label: {
-                        Label("Добавить комплект и открыть корзину",systemImage:"bag")
+                        Label(kitAdded ? "Комплект добавлен" : "Добавить комплект и открыть корзину",
+                              systemImage:kitAdded ? "checkmark" : "bag")
                             .font(.system(size:15,weight:.semibold))
                             .frame(maxWidth:.infinity).frame(height:50)
                             .foregroundStyle(.white).background(Style.blue,in:RoundedRectangle(cornerRadius:14))
-                    }.disabled(wrongMaterial).opacity(wrongMaterial ? 0.55 : 1)
+                    }.disabled(wrongMaterial || kitAdded).opacity(wrongMaterial ? 0.55 : 1)
                     Button {store.save(scenario,amount:total);success=true} label: {
                         Text("Сохранить проект").font(.system(size:14,weight:.semibold)).frame(height:36)
                     }.disabled(wrongMaterial)
@@ -1141,6 +1204,15 @@ private struct PlannerScreen: View {
             }
             .navigationTitle("Решить задачу").navigationBarTitleDisplayMode(.inline)
             .alert("Готово",isPresented:$success) {Button("OK",role:.cancel){}} message:{Text(store.lastMessage)}
+            .task(id:kitAdded) {
+                guard kitAdded else { return }
+                try? await Task.sleep(nanoseconds:520_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(reduceMotion ? nil : OmaMotion.change) {
+                    selectedTab = .cart
+                    showONE = false
+                }
+            }
     }
 }
 
@@ -1165,6 +1237,7 @@ private struct ProjectsScreen: View {
 private struct FeatureScreen: View {
     let feature: ONEFeature
     @ObservedObject var store:Store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scenario:Scenario = .shelf
     @State private var wall = "Бетон"
     @State private var swapped = false
@@ -1201,8 +1274,10 @@ private struct FeatureScreen: View {
                      : "Расчёт по текущим параметрам экрана. Работает без Mac и сети.")
                     .font(.caption).foregroundColor(.secondary)
                 Button {
-                    evidenceResult = EvidenceEngine.shared.run(feature.rawValue,input:evidenceInput)
-                    evidenceError = evidenceResult == nil
+                    withAnimation(reduceMotion ? nil : OmaMotion.change) {
+                        evidenceResult = EvidenceEngine.shared.run(feature.rawValue,input:evidenceInput)
+                        evidenceError = evidenceResult == nil
+                    }
                 } label: {
                     Label("Рассчитать локально",systemImage:"checkmark.shield.fill")
                         .frame(maxWidth:.infinity)
@@ -1267,7 +1342,7 @@ private struct FeatureScreen: View {
             Section("Домашние запасы") {
                 Text("Отмечайте, что уже есть дома. ZeroBuy исключит эти позиции из нового заказа.").font(.caption).foregroundColor(.secondary)
                 ForEach(store.products.prefix(12)){p in
-                    Button {store.toggleOwned(p.id)} label:{HStack{Image(systemName:store.owned.contains(p.id) ? "checkmark.circle.fill" : "circle").foregroundColor(store.owned.contains(p.id) ? .green : Style.blue);Text(p.name).foregroundColor(Style.ink);Spacer();Text(rub(p.price)).font(.caption).foregroundColor(.secondary)}}
+                    Button {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.toggleOwned(p.id)}} label:{HStack{Image(systemName:store.owned.contains(p.id) ? "checkmark.circle.fill" : "circle").foregroundColor(store.owned.contains(p.id) ? .green : Style.blue);Text(p.name).foregroundColor(Style.ink);Spacer();Text(rub(p.price)).font(.caption).foregroundColor(.secondary)}}
                 }
             }
             Section("Оценка экономии на ремонте") {
@@ -1301,7 +1376,7 @@ private struct FeatureScreen: View {
                     let displayed:[String] = swapped ? ["Осмотр и состояние труб","Укладка плитки","Гидроизоляция","Проверка результата"] : ["Осмотр и состояние труб","Гидроизоляция","Укладка плитки","Проверка результата"]
                     HStack {Text("\(i+1)").frame(width:25,height:25).background(Style.soft).clipShape(Circle());Text(displayed[i])}
                 }
-                Button(swapped ? "Восстановить порядок" : "Поменять местами 2-й и 3-й этап") {swapped.toggle()}
+                Button(swapped ? "Восстановить порядок" : "Поменять местами 2-й и 3-й этап") {withAnimation(reduceMotion ? nil : OmaMotion.change) {swapped.toggle()}}
             }
             Section("Проверка Domino") {
                 if swapped {Label("Ошибка: нельзя укладывать плитку до выполнения предусмотренной проектом гидроизоляции.",systemImage:"xmark.octagon.fill").foregroundColor(.red)}
@@ -1316,7 +1391,7 @@ private struct FeatureScreen: View {
                 HStack{Text("Участников");Spacer();Text(store.joinedSyncCity ? "5 из 8" : "4 из 8").fontWeight(.bold)}
                 HStack{Text("Категория");Spacer();Text("Сантехника")}
                 HStack{Text("Гипотеза экономии доставки");Spacer();Text("до 20 BYN").foregroundColor(.green)}
-                Button(store.joinedSyncCity ? "Выйти из группы" : "Присоединиться к группе") {store.joinedSyncCity.toggle()}
+                Button(store.joinedSyncCity ? "Выйти из группы" : "Присоединиться к группе") {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.joinedSyncCity.toggle()}}
             }
             Section {Text("Реальные совместные доставки требуют согласия всех участников, подтверждения наличия, стоимости логистики и партнёрских условий.").font(.caption).foregroundColor(.secondary)}
         }
@@ -1378,7 +1453,7 @@ private struct FeatureScreen: View {
                 HStack{Text("Заинтересованных семей");Spacer();Text(store.votedForge ? "39" : "38").font(.title3.bold())}
                 HStack{Text("Условная цена");Spacer();Text("990 BYN")}
                 ProgressView(value:Double(store.votedForge ? 39 : 38),total:50).tint(Style.blue)
-                Button(store.votedForge ? "Отменить интерес" : "Мне интересен такой комплект") {store.votedForge.toggle()}
+                Button(store.votedForge ? "Отменить интерес" : "Мне интересен такой комплект") {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.votedForge.toggle()}}
             }
             Section {Text("При достижении 50 заявок ОМА могла бы проверить оптовые условия у поставщика. Голоса в демо не являются реальными предзаказами.").font(.caption).foregroundColor(.secondary)}
         }
@@ -1390,7 +1465,7 @@ private struct FeatureScreen: View {
                 Text("В тестовой базе есть несколько сообщений о похожем компоненте. Это не доказательство дефекта вашей установки.").font(.subheadline)
                 HStack{Text("Источник");Spacer();Text("Синтетические записи")}
                 HStack{Text("Достоверность");Spacer();Text("Не подтверждена").foregroundColor(.orange)}
-                Button(store.subscribedPulse ? "Отключить наблюдение" : "Включить наблюдение") {store.subscribedPulse.toggle()}
+                Button(store.subscribedPulse ? "Отключить наблюдение" : "Включить наблюдение") {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.subscribedPulse.toggle()}}
             }
             Section("Следующие действия") {
                 Label("Проверить маркировку и модель",systemImage:"checkmark.circle")
