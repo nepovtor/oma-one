@@ -1,0 +1,453 @@
+{
+  "proofVersion": "2026-10-22-evidence.1",
+  "generatedFrom": "synthetic fixtures",
+  "modules": {
+    "zerobuy": {
+      "module": "ZeroBuy",
+      "version": "2026-10-22-evidence.1",
+      "what": "Verified subtraction and no double-counting",
+      "inputs": {
+        "requirements": [
+          {
+            "id": "p02",
+            "name": "Cartridge",
+            "qty": 1,
+            "unitPrice": 24
+          },
+          {
+            "id": "p03",
+            "name": "FUM tape",
+            "qty": 1,
+            "unitPrice": 6.9
+          },
+          {
+            "id": "p04",
+            "name": "Hose",
+            "qty": 2,
+            "unitPrice": 16
+          }
+        ],
+        "inventory": [
+          {
+            "id": "p03",
+            "qty": 1
+          },
+          {
+            "id": "p04",
+            "qty": 1
+          }
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "id": "p02",
+            "name": "Cartridge",
+            "required": 1,
+            "owned": 0,
+            "toBuy": 1,
+            "unitPrice": 24,
+            "saved": 0,
+            "pay": 24
+          },
+          {
+            "id": "p03",
+            "name": "FUM tape",
+            "required": 1,
+            "owned": 1,
+            "toBuy": 0,
+            "unitPrice": 6.9,
+            "saved": 6.9,
+            "pay": 0
+          },
+          {
+            "id": "p04",
+            "name": "Hose",
+            "required": 2,
+            "owned": 1,
+            "toBuy": 1,
+            "unitPrice": 16,
+            "saved": 16,
+            "pay": 16
+          }
+        ],
+        "full": 62.9,
+        "after": 40,
+        "savings": 22.9
+      },
+      "explanation": "Owned items are subtracted once, never below zero; savings refer to avoided demo purchase, not net lifetime savings.",
+      "limits": [
+        "Inventory is self-reported and does not prove suitability or condition."
+      ],
+      "stats": {
+        "items": 3
+      },
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "antifail": {
+      "module": "AntiFail",
+      "version": "2026-10-22-evidence.1",
+      "what": "Compatibility + safety gate",
+      "inputs": {
+        "surface": "drywall",
+        "fastener": "concrete-anchor",
+        "loadKg": 8,
+        "verifiedWiring": false
+      },
+      "result": {
+        "status": "BLOCKED",
+        "canAutoApprove": false,
+        "critical": [
+          "Fastener concrete-anchor is not mapped as compatible with drywall."
+        ],
+        "risk": [
+          "Hidden pipes/wiring not checked. Do not drill before checking."
+        ],
+        "suggestedFasteners": [
+          "drywall-anchor"
+        ]
+      },
+      "explanation": "Rule engine never certifies a safe installation, even for a preliminary pass.",
+      "limits": [
+        "Illustrative compatibility map only; load limits, wall thickness and manufacturer documentation require specialist review."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "domino": {
+      "module": "Domino",
+      "version": "2026-10-22-evidence.1",
+      "what": "Topological dependency validation",
+      "inputs": {
+        "order": [
+          "inspect",
+          "pipes",
+          "tiles",
+          "waterproof",
+          "finish"
+        ],
+        "steps": [
+          {
+            "id": "inspect",
+            "name": "Survey",
+            "after": []
+          },
+          {
+            "id": "pipes",
+            "name": "Pipes",
+            "after": [
+              "inspect"
+            ]
+          },
+          {
+            "id": "waterproof",
+            "name": "Waterproofing",
+            "after": [
+              "pipes"
+            ]
+          },
+          {
+            "id": "tiles",
+            "name": "Tiling",
+            "after": [
+              "waterproof"
+            ]
+          },
+          {
+            "id": "finish",
+            "name": "Finish and inspect",
+            "after": [
+              "tiles"
+            ]
+          }
+        ]
+      },
+      "result": {
+        "valid": false,
+        "errors": [
+          "tiles requires waterproof first."
+        ],
+        "suggested": [
+          "inspect",
+          "pipes",
+          "waterproof",
+          "tiles",
+          "finish"
+        ]
+      },
+      "explanation": "An invalid order is rejected; the solver returns a topological order if the dependency graph is acyclic.",
+      "limits": [
+        "Dependency graph must be approved by a construction specialist; times/costs are not inferred."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "synccity": {
+      "module": "SyncCity",
+      "version": "2026-10-22-evidence.1",
+      "what": "Delivery/service bundling by zone and slot",
+      "inputs": {
+        "selectedId": "r1",
+        "sharedTripCost": 48,
+        "individualTripCost": 24,
+        "minGroup": 3
+      },
+      "result": {
+        "eligible": true,
+        "requestCount": 3,
+        "matchIds": [
+          "r2",
+          "r3"
+        ],
+        "individualTotal": 72,
+        "combinedTotal": 48,
+        "savingsPerUser": 8,
+        "reason": "Synthetic candidate group: partner quote still required."
+      },
+      "explanation": "User identity and full addresses are excluded from match output; no real booking or guaranteed price.",
+      "limits": [
+        "No real partner pricing or participant consent exists; coordinator must validate operational feasibility."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "proof": {
+      "module": "Proof",
+      "version": "2026-10-22-evidence.1",
+      "what": "Traceable evidence record, not automatic certification",
+      "inputs": {
+        "projectId": "DEMO-102",
+        "steps": [
+          {
+            "code": "checked_materials",
+            "done": true
+          },
+          {
+            "code": "inspection",
+            "done": true
+          }
+        ],
+        "photoHashesCount": 1,
+        "inspector": null,
+        "ownerConsent": false
+      },
+      "result": {
+        "status": "SELF_RECORDED",
+        "digest": "038a78fa4e9f7aa5b9272ab848ae7c7eb47d8219dc1e8703b44eeba62f600168",
+        "canPublishToDNA": false,
+        "completed": true,
+        "photoCount": 1
+      },
+      "explanation": "Hash identifies this exact record; user self-report is NEVER labelled professionally inspected.",
+      "limits": [
+        "A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "dna": {
+      "module": "DNA",
+      "version": "2026-10-22-evidence.1",
+      "what": "Ranking and room-specific adaptation",
+      "inputs": {
+        "homeType": "panel",
+        "room": "bath",
+        "area": 4,
+        "qtyPerM2": 1.1
+      },
+      "result": {
+        "templates": [
+          {
+            "id": "T-101",
+            "score": 100,
+            "eligible": true,
+            "verification": "professional",
+            "referenceArea": 4,
+            "adaptedUnits": 5,
+            "reason": "Matches type, room, and professionally inspected template."
+          },
+          {
+            "id": "T-102",
+            "score": 53,
+            "eligible": false,
+            "verification": "self",
+            "referenceArea": 5,
+            "adaptedUnits": 5,
+            "reason": "Review required: similarity does not certify compatibility."
+          },
+          {
+            "id": "T-103",
+            "score": 53,
+            "eligible": false,
+            "verification": "professional",
+            "referenceArea": 3,
+            "adaptedUnits": null,
+            "reason": "Review required: similarity does not certify compatibility."
+          }
+        ],
+        "best": {
+          "id": "T-101",
+          "score": 100,
+          "eligible": true,
+          "verification": "professional",
+          "referenceArea": 4,
+          "adaptedUnits": 5,
+          "reason": "Matches type, room, and professionally inspected template."
+        }
+      },
+      "explanation": "Similarity score is a DEMO ranking, not a calibrated probability or proof of engineering compatibility.",
+      "limits": [
+        "A real match needs dimensions, plumbing, structure, material specs, consent and moderation."
+      ],
+      "stats": {
+        "considered": 3
+      },
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "forge": {
+      "module": "FORGE",
+      "version": "2026-10-22-evidence.1",
+      "what": "New kit opportunity, backed by opt-in demand",
+      "inputs": {
+        "projects": [
+          {
+            "id": "a",
+            "problem": "entry-storage",
+            "homeType": "panel",
+            "optIn": true
+          },
+          {
+            "id": "b",
+            "problem": "entry-storage",
+            "homeType": "panel",
+            "optIn": true
+          },
+          {
+            "id": "c",
+            "problem": "entry-storage",
+            "homeType": "panel",
+            "optIn": true
+          },
+          {
+            "id": "d",
+            "problem": "entry-storage",
+            "homeType": "panel",
+            "optIn": true
+          },
+          {
+            "id": "e",
+            "problem": "entry-storage",
+            "homeType": "panel",
+            "optIn": false
+          }
+        ],
+        "interestThreshold": 4,
+        "skuCosts": [
+          {
+            "id": "p18",
+            "cost": 175
+          },
+          {
+            "id": "p19",
+            "cost": 25
+          },
+          {
+            "id": "p20",
+            "cost": 49
+          }
+        ],
+        "assemblyCost": 30
+      },
+      "result": {
+        "clusters": [
+          {
+            "key": "entry-storage|panel",
+            "interested": 4,
+            "threshold": 4,
+            "canPropose": true
+          }
+        ],
+        "netCost": 279,
+        "minimumIndicativePrice": 328.24,
+        "status": "PROPOSAL_ONLY",
+        "mayPublishPrice": false
+      },
+      "explanation": "Interest is NOT an order; kit remains a proposal until buyer, category owner and supplier verify economics.",
+      "limits": [
+        "Gross margin excludes returns, shrinkage, marketing and overhead; all data and costs synthetic."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "pulse": {
+      "module": "PULSE",
+      "version": "2026-10-22-evidence.1",
+      "what": "Verified independent incidents + review gate",
+      "inputs": {
+        "reportsCount": 6,
+        "cohortSize": 120,
+        "minCases": 3,
+        "minCohort": 30,
+        "expertApproved": false,
+        "reviewerId": null
+      },
+      "result": {
+        "signals": [
+          {
+            "model": "M-35",
+            "distinctVerifiedCases": 3,
+            "cohortSize": 120,
+            "observedRate": 2.5,
+            "qualifiedForManualReview": true,
+            "mayNotifyExternally": false
+          },
+          {
+            "model": "T-12",
+            "distinctVerifiedCases": 1,
+            "cohortSize": 120,
+            "observedRate": 0.83,
+            "qualifiedForManualReview": false,
+            "mayNotifyExternally": false
+          }
+        ],
+        "notificationsSent": 0
+      },
+      "explanation": "An incident cluster is only a hypothesis. No customer notification is sent in the demo; a professional must authorize a real outreach.",
+      "limits": [
+        "Selection and reporting biases; population denominator not independently validated. This is not a product-recall or safety finding."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    },
+    "economics": {
+      "module": "Economics",
+      "version": "2026-10-22-evidence.1",
+      "what": "Auditable unit economics and break-even",
+      "inputs": {
+        "basket": 300,
+        "margin": 0.2,
+        "service": 140,
+        "commission": 0.12,
+        "fulfillment": 35,
+        "acquisition": 15,
+        "support": 7,
+        "returns": 5,
+        "fixedCost": 3000
+      },
+      "result": {
+        "grossProfit": 60,
+        "commissionRevenue": 16.8,
+        "variableCosts": 62,
+        "contribution": 14.8,
+        "breakEvenOrders": 203,
+        "profitablePerOrder": true
+      },
+      "explanation": "Every number is an explicit editable assumption, not a financial metric supplied by OMA.",
+      "limits": [
+        "Excludes taxes, financing, capacity, refund tail risk and supplier contractual terms."
+      ],
+      "stats": {},
+      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+    }
+  }
+}

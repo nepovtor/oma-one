@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "OMA ONE — сервис жизни дома",
+  "short_name": "OMA ONE",
+  "description": "Единый сервис для домашних задач, проектов и покупок",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#f6f5f9",
+  "theme_color": "#572477",
+  "lang": "ru",
+  "orientation": "any",
+  "categories": ["lifestyle", "shopping", "utilities"],
+  "icons": [
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ],
+  "shortcuts": [
+    {"name": "Решить задачу", "short_name": "Новая задача", "url": "/?view=planner", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Мои проекты", "short_name": "Проекты", "url": "/?view=projects", "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png"}]}
+  ]
+}
