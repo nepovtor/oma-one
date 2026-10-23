@@ -12,7 +12,7 @@
     "reset": "node scripts/reset.mjs",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
-    "test:proof": "node --test tests/proof-engine.test.mjs tests/proof-api.test.mjs tests/engine.test.mjs tests/ios-native-static.test.mjs tests/ui-static.test.mjs",
+    "test:proof": "node --test tests/proof-engine.test.mjs tests/proof-api.test.mjs tests/engine.test.mjs tests/ios-native-static.test.mjs tests/ui-static.test.mjs tests/shelf-flow.test.mjs",
     "evidence": "node proof-server.mjs",
     "evidence:report": "node scripts/generate-evidence.mjs"
   },

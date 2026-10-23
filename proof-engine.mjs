@@ -2,12 +2,12 @@
 // Each function is independent of a generative model and external services.
 import {createHash} from 'node:crypto';
 
-export const PROOF_VERSION='2026-10-22-evidence.1';
+export const PROOF_VERSION='2026-10-23-evidence.2';
 const number = (v,min,max,def) => { const n=Number(v);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):def; };
 const money = x => Math.round((x+Number.EPSILON)*100)/100;
 const assertArray = (v)=>Array.isArray(v)?v:[];
 const idText = x => String(x ?? '').slice(0,100);
-const outcome = (code,what,inputs,result,explanation,limits=[],stats={})=>({module:code,version:PROOF_VERSION,what,inputs,result,explanation,limits,stats,source:'Synthetic fixture / demonstration, not verified OMA operations'});
+const outcome = (code,what,inputs,result,explanation,limits=[],stats={})=>({module:code,version:PROOF_VERSION,what,inputs,result,explanation,limits,stats,source:'Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations'});
 
 export function zeroBuy({requirements=[],inventory=[]}={}){
  const known=new Map();for(const i of assertArray(inventory)){const k=idText(i.id);const q=number(i.qty,0,10000,0); known.set(k,(known.get(k)||0)+q);}
@@ -47,7 +47,7 @@ export function syncCity({requests=[],selectedId='r1',sharedTripCost=48,individu
  return outcome('SyncCity','Delivery/service bundling by zone and slot',{selectedId,sharedTripCost:shared,individualTripCost:single,minGroup:threshold},{eligible,requestCount:members,matchIds:matches.map(x=>x.id),individualTotal:money(members*single),combinedTotal:eligible?shared:null,savingsPerUser,reason:eligible?'Synthetic candidate group: partner quote still required.':'Threshold or business case not met.'},'User identity and full addresses are excluded from match output; no real booking or guaranteed price.',['No real partner pricing or participant consent exists; coordinator must validate operational feasibility.']);
 }
 export function proof({projectId='demo-p1',steps=[],photoHashes=[],inspector=null,ownerConsent=false}={}){
- const checklist=assertArray(steps),finished=checklist.length>0&&checklist.every(x=>x.done===true),photos=assertArray(photoHashes).filter(x=>/^[a-f0-9]{64}$/.test(String(x))).map(String);
+ const checklist=assertArray(steps),photos=assertArray(photoHashes).filter(x=>/^[a-f0-9]{64}$/.test(String(x))).map(String),finished=checklist.length>0&&checklist.every(x=>x.done===true)&&photos.length>0;
  const professional=finished&&!!inspector&&inspector.approved===true&&typeof inspector.id==='string'&&inspector.id.length>0;
  const status=professional?'INSPECTED':finished?'SELF_RECORDED':'INCOMPLETE';
  const attestation={projectId:idText(projectId),checklist:checklist.map(x=>({code:idText(x.code),done:x.done===true})),photoHashes:photos,inspector:professional?inspector.id:null,status};
