@@ -1,0 +1,160 @@
+<div id="oma-first-screen" class="viz-dotted-background">
+  <div class="oma-phone" role="region" aria-label="Концепт главного экрана OMA ONE">
+    <div class="oma-status" aria-hidden="true"><span>9:41</span><span>●●●  ▰</span></div>
+
+    <section class="oma-view" data-screen="home">
+      <header class="oma-header">
+        <div class="oma-mark" aria-label="OMA ONE">OMA<span>ONE</span></div>
+        <div class="oma-city">Минск <i data-lucide="chevron-down" aria-hidden="true"></i></div>
+      </header>
+
+      <main class="oma-main">
+        <h1>Что нужно сделать дома?</h1>
+        <p class="oma-lead">Покажем порядок действий, что проверить и какие материалы могут понадобиться.</p>
+
+        <div class="oma-task">
+          <label for="oma-example-task">Ваша задача</label>
+          <div class="oma-task-field">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input id="oma-example-task" value="Хочу повесить полку" readonly aria-describedby="oma-example-note">
+          </div>
+          <p id="oma-example-note" class="oma-hint">Пример первого сценария</p>
+          <button type="button" class="oma-primary" data-show-result>Показать план <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="oma-example">
+          <div class="oma-example-head"><i data-lucide="shield-check" aria-hidden="true"></i><span>Что приложение заметит заранее</span></div>
+          <p>Для гипсокартона нельзя автоматически взять крепёж для бетона. Сначала уточним нагрузку.</p>
+        </div>
+
+        <div class="oma-continuity"><span>Уже начали?</span><strong>Вернуться к моим проектам</strong><i data-lucide="chevron-right" aria-hidden="true"></i></div>
+      </main>
+    </section>
+
+    <section class="oma-view" data-screen="result" hidden>
+      <header class="oma-header oma-result-header">
+        <button type="button" class="oma-back" data-back-home aria-label="Вернуться на главную"><i data-lucide="arrow-left" aria-hidden="true"></i></button>
+        <strong>План для полки</strong>
+        <span></span>
+      </header>
+
+      <main class="oma-main oma-result-main">
+        <h1>Сначала проверьте стену</h1>
+        <p class="oma-lead">Выбрано: гипсокартон. Это влияет на крепёж и допустимую нагрузку.</p>
+
+        <div class="oma-warning">
+          <span class="oma-warning-icon"><i data-lucide="shield-alert" aria-hidden="true"></i></span>
+          <div><strong>Обычный дюбель не подходит</strong><p>Не добавляем его в корзину. Тип анкера и нагрузку нужно проверить для вашей стены.</p></div>
+        </div>
+
+        <h2>Что делать дальше</h2>
+        <ol class="oma-steps">
+          <li><span>1</span><div><strong>Уточнить основание</strong><small>Гипсокартон и конструкция за ним</small></div></li>
+          <li><span>2</span><div><strong>Проверить вес полки</strong><small>Полка и то, что будет на ней</small></div></li>
+          <li><span>3</span><div><strong>Подобрать крепёж</strong><small>После проверки нагрузки и инструкции</small></div></li>
+        </ol>
+
+        <div class="oma-materials"><span>В списке материалов</span><strong>Полка · 89 BYN</strong><small>Демонстрационная цена; крепёж пока не выбран</small></div>
+        <button type="button" class="oma-primary" data-back-home>Вернуться к задаче <i data-lucide="arrow-left" aria-hidden="true"></i></button>
+      </main>
+    </section>
+
+    <nav class="oma-nav" aria-label="Основные разделы">
+      <div class="oma-nav-item active"><i data-lucide="house" aria-hidden="true"></i><span>Главная</span></div>
+      <div class="oma-nav-item"><i data-lucide="layout-grid" aria-hidden="true"></i><span>Каталог</span></div>
+      <div class="oma-nav-item"><i data-lucide="shopping-bag" aria-hidden="true"></i><span>Корзина</span></div>
+      <div class="oma-nav-item"><i data-lucide="heart" aria-hidden="true"></i><span>Избранное</span></div>
+      <div class="oma-nav-item"><i data-lucide="circle-user-round" aria-hidden="true"></i><span>Профиль</span></div>
+    </nav>
+  </div>
+</div>
+
+<style>
+  #oma-first-screen {
+    --oma-bg: light-dark(#f5f7fb, #151b24);
+    --oma-surface: light-dark(#ffffff, #202938);
+    --oma-ink: light-dark(#172638, #f3f6fa);
+    --oma-muted: light-dark(#5c6a79, #b2c0cf);
+    --oma-blue: light-dark(#0b56b9, #75aaff);
+    --oma-blue-ink: light-dark(#ffffff, #10233e);
+    --oma-pale: light-dark(#e8f1fc, #263b58);
+    --oma-warn: light-dark(#fff0e7, #4a2e23);
+    --oma-warn-ink: light-dark(#9b3c16, #ffc29e);
+    color-scheme: light;
+    display: flex;
+    justify-content: center;
+    padding: 20px 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #oma-first-screen * { box-sizing: border-box; }
+  #oma-first-screen [hidden] { display: none !important; }
+  #oma-first-screen .oma-phone { width: min(100%, 390px); min-height: 750px; display: flex; flex-direction: column; overflow: hidden; border-radius: 34px; background: var(--oma-bg); color: var(--oma-ink); box-shadow: 0 16px 50px light-dark(#10223b23, #0005); }
+  #oma-first-screen .oma-status { height: 39px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 13px; font-weight: 600; background: var(--oma-surface); }
+  #oma-first-screen .oma-view { flex: 1; }
+  #oma-first-screen .oma-header { height: 68px; padding: 0 21px; display: flex; align-items: center; justify-content: space-between; background: var(--oma-surface); }
+  #oma-first-screen .oma-mark { color: var(--oma-blue); font-weight: 850; letter-spacing: -0.06em; font-size: 22px; }
+  #oma-first-screen .oma-mark span { margin-left: 4px; font-weight: 600; letter-spacing: -0.05em; font-size: 13px; }
+  #oma-first-screen .oma-city { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; }
+  #oma-first-screen .oma-city svg { width: 15px; height: 15px; }
+  #oma-first-screen .oma-main { padding: 31px 21px 24px; }
+  #oma-first-screen h1 { margin: 0; font-size: 28px; font-weight: 720; letter-spacing: -0.035em; line-height: 1.09; }
+  #oma-first-screen .oma-lead { margin: 12px 0 0; color: var(--oma-muted); font-size: 14px; line-height: 1.45; }
+  #oma-first-screen .oma-task { margin-top: 26px; }
+  #oma-first-screen .oma-task label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 650; }
+  #oma-first-screen .oma-task-field { display: flex; align-items: center; gap: 11px; height: 56px; padding: 0 15px; background: var(--oma-surface); border-radius: 15px; }
+  #oma-first-screen .oma-task-field svg { width: 19px; height: 19px; color: var(--oma-blue); flex: none; }
+  #oma-first-screen .oma-task-field input { border: 0; outline: 0; background: transparent; color: var(--oma-ink); width: 100%; min-width: 0; font-size: 15px; font-family: inherit; }
+  #oma-first-screen .oma-hint { margin: 7px 1px 0; color: var(--oma-muted); font-size: 12px; }
+  #oma-first-screen .oma-primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 50px; margin-top: 17px; border: 0; border-radius: 14px; background: var(--oma-blue); color: var(--oma-blue-ink); font-family: inherit; font-size: 15px; font-weight: 650; line-height: 1.2; }
+  #oma-first-screen .oma-primary svg { width: 18px; height: 18px; }
+  #oma-first-screen .oma-primary:active { transform: scale(.985); }
+  #oma-first-screen .oma-example { margin-top: 29px; padding: 18px; border-radius: 19px; background: var(--oma-pale); }
+  #oma-first-screen .oma-example-head { display: flex; align-items: center; gap: 8px; color: var(--oma-blue); font-size: 13px; font-weight: 700; }
+  #oma-first-screen .oma-example-head svg { width: 17px; height: 17px; }
+  #oma-first-screen .oma-example p { margin: 11px 0 0; color: var(--oma-ink); font-size: 15px; line-height: 1.42; }
+  #oma-first-screen .oma-continuity { margin-top: 30px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--oma-muted); }
+  #oma-first-screen .oma-continuity strong { font-size: 12px; font-weight: 650; color: var(--oma-blue); }
+  #oma-first-screen .oma-continuity svg { width: 15px; height: 15px; margin-left: auto; color: var(--oma-blue); }
+  #oma-first-screen .oma-nav { display: flex; align-items: flex-start; justify-content: space-between; gap: 2px; min-height: 78px; padding: 13px 12px 9px; background: light-dark(#fffffff2, #202938ef); backdrop-filter: blur(16px); }
+  #oma-first-screen .oma-nav-item { min-width: 0; width: 20%; display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--oma-muted); font-size: 10px; white-space: nowrap; }
+  #oma-first-screen .oma-nav-item.active { color: var(--oma-blue); font-weight: 700; }
+  #oma-first-screen .oma-nav-item svg { width: 21px; height: 21px; stroke-width: 1.8; }
+  #oma-first-screen .oma-result-header { justify-content: flex-start; gap: 13px; font-size: 15px; }
+  #oma-first-screen .oma-result-header strong { font-weight: 700; }
+  #oma-first-screen .oma-back { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 12px; background: var(--oma-pale); color: var(--oma-blue); }
+  #oma-first-screen .oma-back svg { width: 19px; height: 19px; }
+  #oma-first-screen .oma-result-main { padding-top: 24px; }
+  #oma-first-screen .oma-result-main h1 { font-size: 26px; }
+  #oma-first-screen .oma-warning { display: flex; gap: 12px; margin-top: 22px; padding: 16px; border-radius: 18px; background: var(--oma-warn); }
+  #oma-first-screen .oma-warning-icon { color: var(--oma-warn-ink); }
+  #oma-first-screen .oma-warning-icon svg { width: 21px; height: 21px; }
+  #oma-first-screen .oma-warning strong { color: var(--oma-warn-ink); font-size: 14px; }
+  #oma-first-screen .oma-warning p { margin: 5px 0 0; color: var(--oma-ink); font-size: 13px; line-height: 1.42; }
+  #oma-first-screen h2 { margin: 23px 0 11px; font-size: 18px; font-weight: 700; }
+  #oma-first-screen .oma-steps { margin: 0; padding: 0; list-style: none; }
+  #oma-first-screen .oma-steps li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+  #oma-first-screen .oma-steps li > span { width: 26px; height: 26px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--oma-pale); color: var(--oma-blue); font-size: 12px; font-weight: 700; }
+  #oma-first-screen .oma-steps strong { display: block; font-size: 14px; font-weight: 650; }
+  #oma-first-screen .oma-steps small { display: block; margin-top: 3px; color: var(--oma-muted); font-size: 12px; }
+  #oma-first-screen .oma-materials { display: flex; flex-direction: column; gap: 4px; margin-top: 17px; padding: 15px 17px; border-radius: 18px; background: var(--oma-surface); }
+  #oma-first-screen .oma-materials span { color: var(--oma-muted); font-size: 12px; }
+  #oma-first-screen .oma-materials strong { font-size: 16px; }
+  #oma-first-screen .oma-materials small { color: var(--oma-muted); font-size: 12px; }
+  #oma-first-screen .oma-result-main .oma-primary { margin-top: 14px; }
+  @media (prefers-reduced-motion: reduce) { #oma-first-screen .oma-primary:active { transform: none; } }
+  @media (max-width: 350px) { #oma-first-screen { padding: 8px 0; } #oma-first-screen .oma-phone { border-radius: 22px; } #oma-first-screen .oma-main { padding-left: 16px; padding-right: 16px; } #oma-first-screen h1 { font-size: 25px; } #oma-first-screen .oma-continuity { flex-wrap: wrap; } }
+</style>
+
+<script>
+  (() => {
+    const root = document.getElementById('oma-first-screen');
+    const home = root.querySelector('[data-screen="home"]');
+    const result = root.querySelector('[data-screen="result"]');
+    const show = (target) => {
+      home.hidden = target !== 'home';
+      result.hidden = target !== 'result';
+    };
+    root.querySelector('[data-show-result]').addEventListener('click', () => show('result'));
+    root.querySelectorAll('[data-back-home]').forEach(button => button.addEventListener('click', () => show('home')));
+  })();
+</script>
