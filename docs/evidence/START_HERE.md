@@ -8,8 +8,8 @@
 Или вручную:
 
 ```bash
-node --test tests/proof-engine.test.mjs tests/proof-api.test.mjs tests/engine.test.mjs tests/ios-native-static.test.mjs tests/ui-static.test.mjs
-node proof-server.mjs
+npm run test:proof
+npm run evidence
 ```
 
 Затем откройте **http://localhost:8790** на Mac/ПК. На iPhone в одной Wi-Fi сети откройте `http://IP-адрес-Mac:8790/proof.html`. Встроить страницу внутрь SwiftUI: в разделе «Профиль → Моя информация» укажите этот URL в поле «URL лаборатории» и затем нажмите в OMA ONE кнопку «Проверить расчёты».
@@ -32,7 +32,7 @@ node proof-server.mjs
 
 ## Откуда берётся «доказательство»
 
-`proof-engine.mjs` содержит исполняемые правила, `proof-fixtures.mjs` — искусственные входные данные, `tests/proof-engine.test.mjs` — позитивные и негативные кейсы, `docs/evidence/OUTPUT_TRACES.json` — реальные ответы функций, `docs/evidence/EXECUTION_REPORT.md` — автоматически сформированная сводка.
+`proof-engine.ts` содержит исполняемые правила, `proof-fixtures.ts` — искусственные входные данные, `tests/proof-engine.test.ts` — позитивные и негативные кейсы, `docs/evidence/OUTPUT_TRACES.json` — реальные ответы функций, `docs/evidence/EXECUTION_REPORT.md` — автоматически сформированная сводка.
 
 ## Что не доказывается кодом
 

@@ -26,11 +26,16 @@ npm start
 Команды:
 
 ```bash
+npm run typecheck  # строгая проверка Node и браузерного кода без генерации файлов
+npm run build      # компиляция TypeScript и копирование статических файлов в dist/
+npm run dev        # сборка, watch-компиляция и перезапуск Node-сервера
 npm test       # unit + интеграционный тест на изолированном PostgreSQL
 npm run migrate
 npm run reset  # восстановить seed и завершить активные сессии
 npm run db:down
 ```
+
+Весь исполняемый JavaScript для Node.js и браузера собирается из TypeScript. SwiftUI-клиент остаётся на Swift, а `ios/OMAOne/evidence-engine.js` является генерируемым JavaScript-бандлом для JavaScriptCore; вручную его не редактируют.
 
 ## Что реализовано в P1
 
@@ -45,7 +50,7 @@ npm run db:down
 - Десятиминутное резервирование остатков и повторная проверка цены/наличия перед заказом.
 - Append-only аудит с correlation ID; IP хранится только как HMAC-SHA-256.
 - Proof-фотографии вынесены из БД в локальное или S3-совместимое объектное хранилище, проверяются MIME-сигнатура и размер.
-- Клиентские API и состояние вынесены из монолитного `app.js` в отдельные ES-модули.
+- Клиентские API и состояние вынесены из монолитного приложения в отдельные TypeScript-модули.
 
 ## Что реализовано в P2 — интерфейс
 
@@ -81,7 +86,7 @@ OMA_SECURE_COOKIES=1
 ## Архитектура
 
 ```text
-PWA: app.js + api.js + state.js + analytics.js
+PWA: app.ts + api.ts + state.ts + analytics.ts
                 │
              /api/v1
                 │
@@ -94,11 +99,12 @@ Node HTTP API ──┼── OIDC / sessions / RBAC / CSRF
 
 Основные файлы:
 
-- `server.mjs` — HTTP/API и маршрутизация.
-- `db.mjs`, `db/migrations/` — PostgreSQL, транзакции, миграции, аудит и сессии.
-- `oidc.mjs`, `security.mjs`, `validation.mjs` — вход и защитные контуры.
-- `object-store.mjs` — локальное/S3-хранилище Proof.
-- `engine.mjs`, `seed.mjs` — расчётные правила и тестовые данные.
+- `server.ts` — HTTP/API и маршрутизация.
+- `db.ts`, `db/migrations/` — PostgreSQL, транзакции, миграции, аудит и сессии.
+- `oidc.ts`, `security.ts`, `validation.ts` — вход и защитные контуры.
+- `object-store.ts` — локальное/S3-хранилище Proof.
+- `engine.ts`, `seed.ts` — расчётные правила и тестовые данные.
+- `dist/` — генерируемый JavaScript для Node.js и браузера; в Git не хранится.
 - `public/` — PWA-клиент.
 - `tests/` — unit и интеграционные проверки.
 - `docs/p0/` — принятые рамки пилота, роли, SLA, API-запрос и риски.
@@ -121,7 +127,7 @@ Node HTTP API ──┼── OIDC / sessions / RBAC / CSRF
 | POST | `/api/v1/analytics/events` | Записать разрешённое продуктовое событие |
 | GET | `/api/v1/audit` | Аудит для менеджера/администратора |
 
-Полный текущий контракт зафиксирован схемами в `validation.mjs` и интеграционным тестом `tests/api.test.mjs`.
+Полный текущий контракт зафиксирован схемами в `validation.ts` и интеграционным тестом `tests/api.test.ts`.
 
 ## Ограничения пилота
 

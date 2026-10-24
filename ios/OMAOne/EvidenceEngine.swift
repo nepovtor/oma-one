@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import JavaScriptCore
 
-/// Runs the same deterministic demo rules as proof-engine.mjs in one local JS context.
+/// Runs the same deterministic demo rules as proof-engine.ts in one local JS context.
 @MainActor final class EvidenceEngine {
     static let shared = EvidenceEngine()
     private let context = JSContext()

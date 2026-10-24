@@ -35,4 +35,4 @@
 - каталог/расписание/заказы мастеров, платежи, доставка, возвраты;
 - secret manager, observability, backup restore drill, CI/CD;
 - contract/E2E, load test и независимый penetration test;
-- дальнейшее разбиение экранов `public/app.js`.
+- дальнейшее разбиение экранов `public/app.ts`.

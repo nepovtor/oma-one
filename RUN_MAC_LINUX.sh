@@ -12,4 +12,4 @@ if [ -z "${DATABASE_URL:-}" ]; then
   fi
 fi
 echo 'OMA ONE запущен: http://localhost:8787'
-node server.mjs
+npm start

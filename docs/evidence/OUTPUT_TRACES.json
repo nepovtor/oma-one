@@ -1,10 +1,10 @@
 {
-  "proofVersion": "2026-10-22-evidence.1",
+  "proofVersion": "2026-10-23-evidence.2",
   "generatedFrom": "synthetic fixtures",
   "modules": {
     "zerobuy": {
       "module": "ZeroBuy",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Verified subtraction and no double-counting",
       "inputs": {
         "requirements": [
@@ -82,11 +82,11 @@
       "stats": {
         "items": 3
       },
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "antifail": {
       "module": "AntiFail",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Compatibility + safety gate",
       "inputs": {
         "surface": "drywall",
@@ -112,11 +112,11 @@
         "Illustrative compatibility map only; load limits, wall thickness and manufacturer documentation require specialist review."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "domino": {
       "module": "Domino",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Topological dependency validation",
       "inputs": {
         "order": [
@@ -180,11 +180,11 @@
         "Dependency graph must be approved by a construction specialist; times/costs are not inferred."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "synccity": {
       "module": "SyncCity",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Delivery/service bundling by zone and slot",
       "inputs": {
         "selectedId": "r1",
@@ -209,11 +209,11 @@
         "No real partner pricing or participant consent exists; coordinator must validate operational feasibility."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "proof": {
       "module": "Proof",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Traceable evidence record, not automatic certification",
       "inputs": {
         "projectId": "DEMO-102",
@@ -243,11 +243,11 @@
         "A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "dna": {
       "module": "DNA",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Ranking and room-specific adaptation",
       "inputs": {
         "homeType": "panel",
@@ -302,11 +302,11 @@
       "stats": {
         "considered": 3
       },
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "forge": {
       "module": "FORGE",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "New kit opportunity, backed by opt-in demand",
       "inputs": {
         "projects": [
@@ -377,11 +377,11 @@
         "Gross margin excludes returns, shrinkage, marketing and overhead; all data and costs synthetic."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "pulse": {
       "module": "PULSE",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Verified independent incidents + review gate",
       "inputs": {
         "reportsCount": 6,
@@ -417,11 +417,11 @@
         "Selection and reporting biases; population denominator not independently validated. This is not a product-recall or safety finding."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     },
     "economics": {
       "module": "Economics",
-      "version": "2026-10-22-evidence.1",
+      "version": "2026-10-23-evidence.2",
       "what": "Auditable unit economics and break-even",
       "inputs": {
         "basket": 300,
@@ -447,7 +447,7 @@
         "Excludes taxes, financing, capacity, refund tail risk and supplier contractual terms."
       ],
       "stats": {},
-      "source": "Synthetic fixture / demonstration, not verified OMA operations"
+      "source": "Synthetic fixtures or user-entered inputs; deterministic demo rules, never verified OMA operations"
     }
   }
 }

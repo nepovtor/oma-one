@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "types": [],
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": [
+    "proof-ui.ts",
+    "public/**/*.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

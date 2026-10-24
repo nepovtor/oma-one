@@ -2,7 +2,7 @@
 
 > **Важно:** это доказательство работы *программных алгоритмов на синтетических данных*, НЕ доказательство спроса, безопасности конструкций, цен ОМА, экономии реальных покупателей, реальных заказов или готовности интеграции.
 
-Версия правил: `2026-10-22-evidence.1`. Сгенерировано программой `node scripts/generate-evidence.mjs`.
+Версия правил: `2026-10-23-evidence.2`. Сгенерировано командой `npm run evidence:report`.
 
 | Модуль | Наблюдаемый результат на базовом примере | Что пока НЕ доказано |
 |---|---|---|
@@ -19,10 +19,10 @@
 ## Как повторить
 
 ```bash
-node --test tests/proof-engine.test.mjs tests/proof-api.test.mjs tests/engine.test.mjs tests/ios-native-static.test.mjs tests/ui-static.test.mjs
-node proof-server.mjs
+npm run test:proof
+npm run evidence
 # открыть http://localhost:8790/
-node scripts/generate-evidence.mjs
+npm run evidence:report
 ```
 
 ## Условия приёмки

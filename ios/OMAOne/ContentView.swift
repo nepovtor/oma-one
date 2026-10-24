@@ -1130,7 +1130,7 @@ private struct ONEHub: View {
                             VStack(spacing:14) {
                                 Image(systemName:"checkmark.shield").font(.system(size:40)).foregroundColor(Style.blue)
                                 Text("Лаборатория проверяемых расчётов").font(.headline)
-                                Text("Запустите node proof-server.mjs на Mac. В разделе «Профиль → Моя информация» укажите http://IP-вашего-Mac:8790/proof.html. На iPhone localhost не работает.")
+                                Text("Запустите npm run evidence на Mac. В разделе «Профиль → Моя информация» укажите http://IP-вашего-Mac:8790/proof.html. На iPhone localhost не работает.")
                                     .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center)
                             }.padding()
                         }

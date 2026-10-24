@@ -8,11 +8,12 @@ import requests
 import os
 
 root=Path(__file__).resolve().parents[1]
-html=(root/'public/index.html').read_text().replace('<script type="module" src="/app.js"></script>','').replace('<link rel="stylesheet" href="/styles.css">','')
-css=(root/'public/styles.css').read_text();css=css[css.find(':root'):]
-api_js=(root/'public/api.js').read_text().replace('export async function','async function')
-state_js=(root/'public/state.js').read_text().replace('export const S','const S')
-app_js='\n'.join(line for line in (root/'public/app.js').read_text().splitlines() if not line.startswith('import '))
+dist=root/'dist'
+html=(dist/'public/index.html').read_text().replace('<script type="module" src="/app.js"></script>','').replace('<link rel="stylesheet" href="/styles.css">','')
+css=(dist/'public/styles.css').read_text();css=css[css.find(':root'):]
+api_js=(dist/'public/api.js').read_text().replace('export async function','async function')
+state_js=(dist/'public/state.js').read_text().replace('export const S','const S')
+app_js='\n'.join(line for line in (dist/'public/app.js').read_text().splitlines() if not line.startswith('import '))
 js='\n'.join([api_js,state_js,app_js])
 
 def test_page(page):
