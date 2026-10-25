@@ -18,7 +18,7 @@ IN_PROGRESS → SELF_REPORTED → EVIDENCE_SUBMITTED → EXPERT_VERIFIED
 - `POST /api/v1/projects/:id/complete` сверяет checklist и `stepIds` с полным сохранённым планом, повторно проверяет Domino и создаёт `SELF_REPORTED` без фото либо `EVIDENCE_SUBMITTED` с сохранённым фото.
 - `POST /api/v1/projects/:id/verify` доступен только роли `master`, принимает только полную `EVIDENCE_SUBMITTED` запись и создаёт `EXPERT_VERIFIED`.
 - Фото, хеш и самостоятельная отметка сами по себе не дают экспертный статус.
-- `/api/v1` сохранён; `stepIds` добавлен как обратносуместимое поле. Миграция `004_proof_statuses.sql` переводит старые записи без выдумывания доказательств.
+- `/api/v1` сохранён; `stepIds` добавлен как обратносуместимое поле. Миграция `004_proof_statuses.sql` дополняется корректирующей `005_proof_legacy_guard.sql`: историческое фото или флаг `expert` сами по себе не повышают статус. При недостатке подтверждений запись остаётся `SELF_REPORTED`. Новый `EVIDENCE_SUBMITTED` сохраняется только при полном чек-листе и хешах фото/записи, а `EXPERT_VERIFIED` — дополнительно при идентификаторе и времени проверки специалиста.
 
 ## Остальные механизмы
 

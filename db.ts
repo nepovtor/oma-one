@@ -40,17 +40,42 @@ function normalizeState(value: unknown): AppState{
  for(const project of state.projects||[]){
   const proof=project.proof;
   if(!proof)continue;
-  proof.stepIds=Array.isArray(proof.stepIds)?proof.stepIds:project.plan?.steps.map(step=>step.id)||[];
-  proof.status=proof.status||(proof.verified==='expert'?'EXPERT_VERIFIED':proof.object||proof.image?'EVIDENCE_SUBMITTED':'SELF_REPORTED');
-  proof.verified=proof.status==='EXPERT_VERIFIED'?'expert':'self';
+
+  const planIds=Array.isArray(project.plan?.steps)?project.plan.steps.map(step=>step.id):[];
+  proof.stepIds=Array.isArray(proof.stepIds)?proof.stepIds:planIds;
   proof.photoHash=typeof proof.photoHash==='string'?proof.photoHash:null;
   proof.digest=typeof proof.digest==='string'?proof.digest:null;
-  proof.inspectorId=typeof proof.inspectorId==='string'?proof.inspectorId:null;
-  proof.verifiedAt=typeof proof.verifiedAt==='string'?proof.verifiedAt:null;
+
+  // Legacy "verified" flags and raw images are not evidence or an expert attestation.
+  // Both newly submitted and migrated records must satisfy the same minimum proof contract.
+  const hasCompleteSteps=planIds.length>0&&
+   Array.isArray(proof.checklist)&&proof.checklist.length===planIds.length&&
+   proof.checklist.every(done=>done===true)&&
+   proof.stepIds.length===planIds.length&&
+   proof.stepIds.every((id,index)=>id===planIds[index]);
+  const hasEvidence=hasCompleteSteps&&typeof proof.object?.key==='string'&&
+   proof.object.key.length>0&&/^[a-f0-9]{64}$/i.test(proof.photoHash||'')&&
+   /^[a-f0-9]{64}$/i.test(proof.digest||'');
+  const hasExpertAttestation=hasEvidence&&
+   typeof proof.inspectorId==='string'&&proof.inspectorId.trim().length>0&&
+   typeof proof.verifiedAt==='string'&&Number.isFinite(Date.parse(proof.verifiedAt));
+  if(proof.status==='EXPERT_VERIFIED'&&hasExpertAttestation){
+   proof.status='EXPERT_VERIFIED';
+  }else if((proof.status==='EVIDENCE_SUBMITTED'||proof.status==='EXPERT_VERIFIED')&&hasEvidence){
+   proof.status='EVIDENCE_SUBMITTED';
+  }else if(proof.status==='IN_PROGRESS'){
+   proof.status='IN_PROGRESS';
+  }else{
+   proof.status='SELF_REPORTED';
+  }
+  proof.verified=proof.status==='EXPERT_VERIFIED'?'expert':'self';
+  if(proof.status!=='EXPERT_VERIFIED'){
+   proof.inspectorId=null;
+   proof.verifiedAt=null;
+  }
  }
  return state;
 }
-
 async function migrate(pool: PgPool){
  await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
  const files=(await fs.readdir(migrationsDir)).filter(name=>name.endsWith('.sql')).sort();
