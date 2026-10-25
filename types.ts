@@ -151,11 +151,18 @@ export interface ProofObject {
 }
 
 export interface ProjectProof {
+  status: 'IN_PROGRESS' | 'SELF_REPORTED' | 'EVIDENCE_SUBMITTED' | 'EXPERT_VERIFIED';
   checklist: boolean[];
+  stepIds: string[];
   note: string;
   object?: ProofObject | null;
   image?: string | null;
-  verified: string;
+  photoHash?: string | null;
+  digest?: string | null;
+  verified: 'self' | 'expert';
+  inspectorId?: string | null;
+  verifiedAt?: string | null;
+  verificationNote?: string;
   date: string;
 }
 

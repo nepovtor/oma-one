@@ -341,11 +341,7 @@ private struct Category: Identifiable {
             }
             projects[index].proofStatus = status
         } else {
-            guard projects[index].photoName != nil else {
-                lastMessage = "Для доказательной записи прикрепите фото. Без него доступна только отметка со слов пользователя."
-                return
-            }
-            projects[index].proofStatus = "EVIDENCE_SUBMITTED"
+            projects[index].proofStatus = projects[index].photoName == nil ? "SELF_REPORTED" : "EVIDENCE_SUBMITTED"
         }
         projects[index].completed = true
         lastMessage = projects[index].proofStatus == "EVIDENCE_SUBMITTED"
@@ -1500,14 +1496,14 @@ private struct FeatureScreen: View {
                         ForEach(store.projects){p in Text(Scenario(rawValue:p.scenario)?.title ?? "Проект").tag(p.id as UUID?)}
                     }
                     PhotosPicker(selection:$photo,matching:.images) {Label("Прикрепить фото результата",systemImage:"photo.on.rectangle")}
-                    Text("Фото обязательно для записи выполнения. Оно не подтверждает качество или безопасность работ.")
+                    Text("Без фото сохраняется только отметка со слов пользователя. Фото не подтверждает качество или безопасность работ.")
                         .font(.caption).foregroundColor(.secondary)
                     Button("Подтвердить выполнение проекта") {
                         guard let id=selectedProject else {status="Выберите проект";return}
                         store.complete(id)
                         status="Проект отмечен выполненным. Фото, если выбрано, сохраняется после обработки."
                     }
-                    .disabled(selectedProject == nil || !store.projects.contains(where: { $0.id == selectedProject && $0.photoName != nil }))
+                    .disabled(selectedProject == nil)
                 }
             }
             Section("Результаты") {ForEach(store.projects.filter{$0.completed}){p in Label(Scenario(rawValue:p.scenario)?.title ?? "Проект",systemImage:"checkmark.seal.fill").foregroundColor(.green)}}

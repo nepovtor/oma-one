@@ -33,10 +33,21 @@ const clone=<T>(value: T): T=>structuredClone(value);
 
 function normalizeState(value: unknown): AppState{
  const state=value&&typeof value==='object'?value as AppState:seed();
- state.version=Number(state.version)||2;
+ state.version=Math.max(3,Number(state.version)||3);
  state.calculations=Array.isArray(state.calculations)?state.calculations:[];
  state.reservations=Array.isArray(state.reservations)?state.reservations:[];
  for(const user of state.users||[])user.roles=Array.isArray(user.roles)&&user.roles.length?user.roles:['client'];
+ for(const project of state.projects||[]){
+  const proof=project.proof;
+  if(!proof)continue;
+  proof.stepIds=Array.isArray(proof.stepIds)?proof.stepIds:project.plan?.steps.map(step=>step.id)||[];
+  proof.status=proof.status||(proof.verified==='expert'?'EXPERT_VERIFIED':proof.object||proof.image?'EVIDENCE_SUBMITTED':'SELF_REPORTED');
+  proof.verified=proof.status==='EXPERT_VERIFIED'?'expert':'self';
+  proof.photoHash=typeof proof.photoHash==='string'?proof.photoHash:null;
+  proof.digest=typeof proof.digest==='string'?proof.digest:null;
+  proof.inspectorId=typeof proof.inspectorId==='string'?proof.inspectorId:null;
+  proof.verifiedAt=typeof proof.verifiedAt==='string'?proof.verifiedAt:null;
+ }
  return state;
 }
 

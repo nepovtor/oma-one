@@ -16,7 +16,7 @@ import {asAppError} from './types.js';
 import type {AppError, AppState, Calculation, ProjectStep, Reservation, Role, User} from './types.js';
 import type {SessionRecord} from './db.js';
 import type {OidcResult} from './oidc.js';
-import {shelfDecision} from './proof-engine.js';
+import {domino, proof, shelfDecision} from './proof-engine.js';
 
 interface RequestContext {
  method: string;
@@ -46,6 +46,7 @@ const rateLimit=createRateLimiter();
 const oidc=createOidc();
 
 const id=(prefix: string)=>`${prefix}_${crypto.randomUUID().slice(0,12)}`;
+const proofImageHash=(dataUrl: string)=>crypto.createHash('sha256').update(Buffer.from(dataUrl.split(',',2)[1]||'','base64')).digest('hex');
 const err=(message: string,status=400,code='BAD_REQUEST',retryable=false,details: unknown[]=[]): AppError=>Object.assign(new Error(message),{status,code,retryable,details});
 const pick=<T extends {id: string}>(collection: T[],key: string)=>{const value=collection.find(item=>item.id===key);if(!value)throw err('Объект не найден',404,'NOT_FOUND');return value;};
 const getUser=(state: AppState,userId: string)=>pick(state.users,userId);
@@ -164,9 +165,49 @@ async function route(ctx: RequestContext): Promise<unknown>{
   const input=parse(schemas.calculationRef,ctx.data),projectId=id('project');return store.mutate(mutationMeta(ctx,'project.created','project',projectId),state=>{const user=getUser(state,ctx.user.id),calculation=findCalculation(state,ctx,input.calculationId),plan=calculation.plan,project={id:projectId,userId:user.id,title:escapeText(plan.title),scenarioId:plan.scenarioId,room:plan.room,area:plan.area,createdAt:new Date().toISOString(),status:'planned',budget:plan.budget,estimated:plan.estimated,ruleVersion:calculation.rulesVersion,plan,proof:null};state.projects.push(project);user.projectIds.push(project.id);return {project};});
  }
  const projectMatch=pathname.match(/^\/projects\/([^/]+)\/complete$/);
- if(method==='POST'&&projectMatch){const input=parse(schemas.projectComplete,ctx.data),object=input.image?await objectStore.putProof(input.image):null;try{return await store.mutate(mutationMeta(ctx,'project.completed','project',projectMatch[1],{hasImage:Boolean(object)}),state=>{const project=pick(state.projects,projectMatch[1]);if(project.userId!==ctx.user.id)throw err('Нет доступа',403,'FORBIDDEN');if(project.status==='completed')throw err('Проект уже завершён',409,'PROJECT_ALREADY_COMPLETED');if(!input.checklist.every(Boolean))throw err('Отметьте все пункты приёмки',422,'CHECKLIST_INCOMPLETE');project.status='completed';project.proof={checklist:input.checklist,note:escapeText(input.note),object,verified:'self',date:new Date().toISOString()};return {project};});}catch(error){if(object)await objectStore.remove(object).catch(()=>{});throw error;}}
+ if(method==='POST'&&projectMatch){
+  const input=parse(schemas.projectComplete,ctx.data),object=input.image?await objectStore.putProof(input.image):null;
+  try{
+   return await store.mutate(mutationMeta(ctx,'project.proof_submitted','project',projectMatch[1],{hasImage:Boolean(object)}),state=>{
+    const project=pick(state.projects,projectMatch[1]);
+    if(project.userId!==ctx.user.id)throw err('Нет доступа',403,'FORBIDDEN');
+    const steps=project.plan?.steps||[],stepIds=steps.map(step=>step.id),submittedStepIds=input.stepIds||stepIds;
+    if(!steps.length)throw err('У проекта нет сохранённого плана',409,'PROJECT_PLAN_MISSING');
+    if(input.checklist.length!==steps.length||submittedStepIds.length!==steps.length||submittedStepIds.some((stepId,index)=>stepId!==stepIds[index]))throw err('Чек-лист должен точно совпадать с сохранённым планом',422,'CHECKLIST_MISMATCH');
+    if(!input.checklist.every(Boolean))throw err('Отметьте все этапы сохранённого плана',422,'CHECKLIST_INCOMPLETE');
+    const sequence=domino({order:submittedStepIds,steps:steps.map(step=>({id:step.id,name:step.title,after:step.after||[]}))}).result;
+    if(!sequence.valid)throw err('Порядок этапов Domino нарушен',422,'DOMINO_SEQUENCE_INVALID',false,sequence.errors);
+    const photoHash=input.image?proofImageHash(input.image):null;
+    const decision=proof({projectId:project.id,steps:steps.map((step,index)=>({code:step.id,done:input.checklist[index]===true})),photoHashes:photoHash?[photoHash]:[]}).result;
+    const current=project.proof?.status;
+    if(current==='EXPERT_VERIFIED')throw err('Экспертно проверенную запись нельзя заменить',409,'PROOF_TRANSITION_INVALID');
+    if(decision.status==='SELF_REPORTED'&&current)throw err('Нельзя понизить статус до отметки без доказательств',409,'PROOF_TRANSITION_INVALID');
+    if(decision.status==='EVIDENCE_SUBMITTED'&&current==='EVIDENCE_SUBMITTED')throw err('Доказательная запись уже сохранена',409,'PROOF_ALREADY_SUBMITTED');
+    const now=new Date().toISOString();
+    project.status='completed';
+    project.proof={status:decision.status,checklist:input.checklist,stepIds,note:escapeText(input.note),object,image:null,photoHash,digest:decision.digest,verified:'self',inspectorId:null,verifiedAt:null,date:now};
+    return {project,decision};
+   });
+  }catch(error){if(object)await objectStore.remove(object).catch(()=>{});throw error;}
+ }
+ const verifyMatch=pathname.match(/^\/projects\/([^/]+)\/verify$/);
+ if(method==='POST'&&verifyMatch){
+  const input=parse(schemas.projectVerify,ctx.data);requireRole(ctx.user,'master');
+  return store.mutate(mutationMeta(ctx,'project.expert_verified','project',verifyMatch[1]),state=>{
+   const project=pick(state.projects,verifyMatch[1]),saved=project.proof,steps=project.plan?.steps||[],stepIds=steps.map(step=>step.id);
+   if(!saved||saved.status!=='EVIDENCE_SUBMITTED'||!saved.object||!saved.photoHash)throw err('Сначала нужна полная доказательная запись с фото',409,'EVIDENCE_REQUIRED');
+   if(!steps.length||saved.checklist.length!==steps.length||!saved.checklist.every(Boolean)||saved.stepIds.length!==steps.length||saved.stepIds.some((stepId,index)=>stepId!==stepIds[index]))throw err('Сохранённый чек-лист не совпадает с планом',409,'SAVED_PROOF_INVALID');
+   const sequence=domino({order:saved.stepIds,steps:steps.map(step=>({id:step.id,name:step.title,after:step.after||[]}))}).result;
+   if(!sequence.valid)throw err('Сохранённая последовательность Domino недопустима',409,'SAVED_PROOF_INVALID');
+   const decision=proof({projectId:project.id,steps:steps.map(step=>({code:step.id,done:true})),photoHashes:[saved.photoHash],inspector:{id:ctx.user.id,approved:true}}).result;
+   if(decision.status!=='EXPERT_VERIFIED')throw err('Не удалось подтвердить доказательную запись',409,'PROOF_TRANSITION_INVALID');
+   const now=new Date().toISOString();
+   project.proof={...saved,status:'EXPERT_VERIFIED',verified:'expert',inspectorId:ctx.user.id,verifiedAt:now,verificationNote:escapeText(input.note),digest:decision.digest};
+   return {project,decision};
+  });
+ }
  const proofImageMatch=pathname.match(/^\/projects\/([^/]+)\/proof-image$/);
- if(method==='GET'&&proofImageMatch){const state=await store.readState(),project=pick(state.projects,proofImageMatch[1]);if(project.userId!==ctx.user.id&&!hasRole(ctx.user,'operator','administrator'))throw err('Нет доступа',403,'FORBIDDEN');if(!project.proof?.object)throw err('Фотография не найдена',404,'NOT_FOUND');return {binary:await objectStore.get(project.proof.object)};}
+ if(method==='GET'&&proofImageMatch){const state=await store.readState(),project=pick(state.projects,proofImageMatch[1]);if(project.userId!==ctx.user.id&&!hasRole(ctx.user,'master','operator','administrator'))throw err('Нет доступа',403,'FORBIDDEN');if(!project.proof?.object)throw err('Фотография не найдена',404,'NOT_FOUND');return {binary:await objectStore.get(project.proof.object)};}
 
  if(method==='POST'&&pathname==='/cart/items'){
   const input=parse(schemas.cartItem,ctx.data);return store.mutate(mutationMeta(ctx,'cart.item_added','cart',ctx.user.id,{productId:input.productId,quantity:input.quantity}),state=>{const user=getUser(state,ctx.user.id),product=pick(state.products,input.productId),item=user.cart.find(value=>value.productId===product.id);if(item){if(item.quantity+input.quantity>200)throw err('Количество превышает лимит',422,'QUANTITY_LIMIT');item.quantity+=input.quantity;}else user.cart.push({id:id('cart'),productId:product.id,quantity:input.quantity});return {cart:user.cart};});
