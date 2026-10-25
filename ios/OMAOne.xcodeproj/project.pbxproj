@@ -13,6 +13,8 @@
 		A10000000000000000000007 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* EvidenceEngine.swift */; };
 		A10000000000000000000008 /* evidence-engine.js in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* evidence-engine.js */; };
 		A10000000000000000000009 /* ShelfFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* ShelfFlow.swift */; };
+		A1000000000000000000000A /* HomeTwinModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* HomeTwinModel.swift */; };
+		A1000000000000000000000B /* HomeTwin3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* HomeTwin3DView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +27,8 @@
 		A20000000000000000000007 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* evidence-engine.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "evidence-engine.js"; sourceTree = "<group>"; };
 		A20000000000000000000009 /* ShelfFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfFlow.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* HomeTwinModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTwinModel.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* HomeTwin3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTwin3DView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +58,8 @@
 				A20000000000000000000007 /* EvidenceEngine.swift */,
 				A20000000000000000000008 /* evidence-engine.js */,
 				A20000000000000000000009 /* ShelfFlow.swift */,
+				A2000000000000000000000A /* HomeTwinModel.swift */,
+				A2000000000000000000000B /* HomeTwin3DView.swift */,
 				A20000000000000000000004 /* Info.plist */,
 				A20000000000000000000005 /* Assets.xcassets */,
 			);
@@ -132,6 +138,8 @@
 				A10000000000000000000003 /* WebApp.swift in Sources */,
 				A10000000000000000000007 /* EvidenceEngine.swift in Sources */,
 				A10000000000000000000009 /* ShelfFlow.swift in Sources */,
+				A1000000000000000000000A /* HomeTwinModel.swift in Sources */,
+				A1000000000000000000000B /* HomeTwin3DView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

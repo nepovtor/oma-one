@@ -362,6 +362,16 @@ private struct Category: Identifiable {
         if let hash { projects[index].shelf?.photoHash = hash }
         lastMessage = "Фото прикреплено, статус выполнения не менялся"
     }
+    var homeTwinShelfEvidence: TwinShelfEvidence {
+        guard let project = projects.first(where: { $0.shelf != nil }) else { return .none }
+        guard project.completed else { return .planned }
+        switch project.proofStatus {
+        case "EVIDENCE_SUBMITTED": return .photoSubmitted
+        case "SELF_REPORTED": return .selfReported
+        default: return .planned
+        }
+    }
+
     func checkout() {
         guard cartCount > 0 else { return }
         orders.insert("Демо-заказ №\(1000 + orders.count + 1) · \(rub(cartTotal)) · \(city)", at:0)
@@ -400,6 +410,7 @@ struct ContentView: View {
     @State private var showONE = false
     @State private var startPlanner = false
     @State private var startShelf = false
+    @State private var startTwin = false
     @State private var showEngine = false
     @State private var category: String? = nil
     @State private var search = ""
@@ -409,7 +420,7 @@ struct ContentView: View {
         VStack(spacing:0) {
             Group {
                 switch tab {
-                case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, selectedTab:$tab, category:$category, search:$search)
+                case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
                 case .catalog: CatalogScreen(store:store, category:$category, search:$search)
                 case .cart: CartScreen(store:store, selectedTab:$tab)
                 case .favorites: FavoritesScreen(store:store, selectedTab:$tab)
@@ -458,8 +469,8 @@ struct ContentView: View {
         .preferredColorScheme(.light)
         .tint(Style.blue)
         .buttonStyle(OmaPressButtonStyle())
-        .sheet(isPresented:$showONE,onDismiss:{startPlanner=false;startShelf=false}) {
-            NavigationStack { ONEHub(store:store,showONE:$showONE,startPlanner:$startPlanner,startShelf:$startShelf,selectedTab:$tab,showEngine:$showEngine) }
+        .sheet(isPresented:$showONE,onDismiss:{startPlanner=false;startShelf=false;startTwin=false}) {
+            NavigationStack { ONEHub(store:store,showONE:$showONE,startPlanner:$startPlanner,startShelf:$startShelf,startTwin:$startTwin,selectedTab:$tab,showEngine:$showEngine) }
                 .tint(Style.blue)
         }
         .sheet(isPresented:$showEngine) {
@@ -528,6 +539,7 @@ private struct HomeScreen: View {
     @Binding var showONE: Bool
     @Binding var startPlanner: Bool
     @Binding var startShelf: Bool
+    @Binding var startTwin: Bool
     @Binding var selectedTab: Tab
     @Binding var category: String?
     @Binding var search: String
@@ -568,6 +580,12 @@ private struct HomeScreen: View {
                         .foregroundStyle(.white)
                         .background(Style.hero,in:RoundedRectangle(cornerRadius:22))
                     }.buttonStyle(OmaPressButtonStyle())
+                    Button { startTwin = true; showONE = true } label: {
+                        categoryRow("Моя квартира · 3D",
+                                    "Создайте план комнат и следите за ремонтом", "cube.transparent.fill")
+                    }
+                    .buttonStyle(OmaPressButtonStyle())
+                    .accessibilityIdentifier("homeTwin.open")
 
                     VStack(alignment:.leading,spacing:12) {
                         Text("Ещё задачи")
@@ -954,7 +972,7 @@ private struct ProfileScreen: View {
                             Image(systemName:"house").font(.system(size:23))
                             VStack(alignment:.leading,spacing:3) {
                                 Text("OMA ONE · Мой дом").font(.system(size:17,weight:.bold))
-                                Text("Планы, проекты и 8 демо-технологий").font(.system(size:12))
+                                Text("Проекты, 3D-квартира и 8 демо-технологий").font(.system(size:12))
                             }
                             Spacer(); Image(systemName:"chevron.right")
                         }.padding(20).foregroundColor(.white).background(Style.hero,in:RoundedRectangle(cornerRadius:20))
@@ -1062,6 +1080,7 @@ private struct ONEHub: View {
     @Binding var showONE:Bool
     @Binding var startPlanner:Bool
     @Binding var startShelf:Bool
+    @Binding var startTwin:Bool
     @Binding var selectedTab:Tab
     @Binding var showEngine:Bool
     @Environment(\.dismiss) private var dismiss
@@ -1092,6 +1111,32 @@ private struct ONEHub: View {
                     HStack { Text("Хочу повесить полку").font(.system(size:16,weight:.semibold)); Spacer(); Image(systemName:"arrow.right") }
                         .foregroundStyle(Style.blue).padding(17).modifier(OmaCardSurface(radius:18))
                 }
+                NavigationLink {
+                    HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "cube.transparent.fill")
+                            .font(.system(size: 31))
+                            .foregroundStyle(Style.blue)
+                            .frame(width: 47, height: 52)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("OMA HOME TWIN · 3D")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(Style.ink)
+                            Text("Настройте комнаты, наблюдайте за прогрессом")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Style.blue)
+                    }
+                    .padding(17)
+                    .modifier(OmaCardSurface(radius: 20))
+                }
+                .accessibilityIdentifier("homeTwin.hub")
+
                 HStack {
                     VStack(alignment:.leading,spacing:3) { Text("Мои проекты").font(.system(size:16,weight:.semibold)); Text("Сохранено: \(store.projects.count)").font(.system(size:13)).foregroundColor(.secondary) }
                     Spacer()
@@ -1165,6 +1210,9 @@ private struct ONEHub: View {
             .navigationDestination(isPresented:$startShelf) {
                 ShelfFlowScreen(store:store,showONE:$showONE,selectedTab:$selectedTab,
                                 existing:store.projects.first(where:{$0.shelf != nil})?.shelf)
+            }
+            .navigationDestination(isPresented:$startTwin) {
+                HomeTwin3DView(shelfEvidence:store.homeTwinShelfEvidence)
             }
             .toolbar {ToolbarItem(placement:.topBarTrailing){Button("Закрыть"){dismiss()}}}
     }
@@ -1293,6 +1341,13 @@ private struct ProjectsScreen: View {
     @Binding var selectedTab:Tab
     var body: some View {
         List {
+            NavigationLink {
+                HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
+            } label: {
+                Label("Открыть мою 3D-квартиру", systemImage: "cube.transparent.fill")
+                    .foregroundStyle(Style.blue)
+                    .font(.system(size: 16, weight: .semibold))
+            }
             if store.projects.isEmpty {Text("Пока нет сохранённых проектов. Начните с раздела «Решить задачу».").foregroundColor(.secondary)}
             ForEach(store.projects) {p in
                 Group {
