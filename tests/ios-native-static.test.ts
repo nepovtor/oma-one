@@ -38,3 +38,15 @@ test('reference catalog assets and promo banners exist in Xcode asset catalog',a
  for(let i=1;i<=16;i++)assert.ok(all.includes(`Category${String(i).padStart(2,'0')}.imageset`));
  for(const name of ['PromoLight','PromoTools','PromoLinen','PromoFoam','PromoPaint','OMALogoReference'])assert.ok(all.includes(`${name}.imageset`));
 });
+
+test('saving an unchanged completed shelf preserves Proof, while changed inputs revoke it',async()=>{
+ const src=await read('ios/OMAOne/ContentView.swift');
+ const begin=src.indexOf('func saveShelf(_ draft: ShelfProjectData, amount: Double)');
+ const end=src.indexOf('func complete(_ id:',begin);
+ assert.ok(begin>=0&&end>begin);
+ const save=src.slice(begin,end);
+ assert.match(save,/previous\?\.updatedAt = copy\.updatedAt/);
+ assert.match(save,/let inputsChanged = previous != copy/);
+ assert.match(save,/if inputsChanged \{\s*projects\[index\]\.completed = false\s*projects\[index\]\.proofStatus = nil/);
+ assert.doesNotMatch(save,/projects\[index\]\.completed = false\s*\}/);
+});

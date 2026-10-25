@@ -308,15 +308,22 @@ private struct Category: Identifiable {
         var copy = draft
         copy.updatedAt = Date()
         if let index = projects.firstIndex(where: { $0.id == draft.id }) {
+            // updatedAt alone does not invalidate a completed Proof record.
+            var previous = projects[index].shelf
+            previous?.updatedAt = copy.updatedAt
+            let inputsChanged = previous != copy
             projects[index].shelf = copy
             projects[index].amount = amount
             projects[index].photoName = copy.photoPath
-            projects[index].completed = false
+            if inputsChanged {
+                projects[index].completed = false
+                projects[index].proofStatus = nil
+            }
         } else {
             projects.insert(SavedProject(id:copy.id,scenario:Scenario.shelf.rawValue,
                                          amount:amount,photoName:copy.photoPath,shelf:copy),at:0)
         }
-        lastMessage = "Проект полки сохранён локально. Незавершённые проверки остались видны."
+        lastMessage = "Проект полки сохранён локально. При изменении параметров подтверждение сбрасывается."
     }
     func complete(_ id: UUID, photo: String? = nil) {
         guard let index = projects.firstIndex(where:{$0.id == id}) else { return }
