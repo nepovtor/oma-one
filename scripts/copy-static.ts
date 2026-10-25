@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {portableEvidenceBody} from './evidence-bundle.js';
 
 const projectRoot = process.cwd();
 const distRoot = path.join(projectRoot, 'dist');
@@ -21,3 +22,14 @@ for (const [source, destination] of copies) {
   await fs.mkdir(path.dirname(to), {recursive: true});
   await fs.cp(from, to, {recursive: true});
 }
+
+const proofSource=await fs.readFile(path.join(distRoot,'proof-engine.js'),'utf8');
+const browserEvidence=`// Generated from proof-engine.ts during npm run build.\n${portableEvidenceBody(proofSource)}\n`+
+ `globalThis.omaShelfEngine=Object.freeze({\n`+
+ ` version:PROOF_VERSION,\n`+
+ ` steps:SHELF_STEPS.map(step=>({id:step.id,title:step.name,after:step.after||[]})),\n`+
+ ` evaluate(inputJSON){return JSON.stringify(shelfDecision(JSON.parse(inputJSON)));},\n`+
+ ` canComplete(completedJSON,stepId){return canCompleteShelfStep(JSON.parse(completedJSON),stepId);},\n`+
+ ` toggle(completedJSON,stepId){return JSON.stringify(toggleShelfStep(JSON.parse(completedJSON),stepId));}\n`+
+ `});\n`;
+await fs.writeFile(path.join(distRoot,'public','evidence-engine.js'),browserEvidence);

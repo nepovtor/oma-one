@@ -26,13 +26,13 @@ test('SyncCity matches only same city zone slot service',()=>{let x=syncCity(FIX
 test('SyncCity refuses loss-making joint trip',()=>{const x=syncCity({...FIXTURES.synccity,sharedTripCost:100});assert.equal(x.result.eligible,false);assert.equal(x.result.savingsPerUser,0);});
 test('SyncCity requires sufficient participants',()=>assert.equal(syncCity({...FIXTURES.synccity,minGroup:4}).result.eligible,false));
 test('SyncCity handles missing requester without leaking identity',()=>assert.equal(syncCity({...FIXTURES.synccity,selectedId:'missing'}).result.eligible,false));
-test('Proof self-report is not professionally inspected',()=>assert.equal(proof(FIXTURES.proof).result.status,'SELF_RECORDED'));
+test('Proof evidence submission is not professionally inspected',()=>assert.equal(proof(FIXTURES.proof).result.status,'EVIDENCE_SUBMITTED'));
 test('Proof self-report cannot publish even with consent',()=>assert.equal(proof({...FIXTURES.proof,ownerConsent:true}).result.canPublishToDNA,false));
 test('Proof independent check without consent cannot publish',()=>assert.equal(proof({...FIXTURES.proof,inspector:{id:'x',approved:true}}).result.canPublishToDNA,false));
 test('Proof verified and consented can publish in demo',()=>assert.equal(proof({...FIXTURES.proof,inspector:{id:'x',approved:true},ownerConsent:true}).result.canPublishToDNA,true));
 test('Proof unchanged record produces unchanged SHA256',()=>assert.equal(proof(FIXTURES.proof).result.digest,proof(FIXTURES.proof).result.digest));
 test('Proof change to checklist changes SHA256',()=>assert.notEqual(proof(FIXTURES.proof).result.digest,proof({...FIXTURES.proof,steps:[{code:'checked_materials',done:true},{code:'inspection',done:false}]}).result.digest));
-test('Proof refuses partially finished project',()=>assert.equal(proof({...FIXTURES.proof,steps:[{code:'x',done:false}]}).result.status,'INCOMPLETE'));
+test('Proof refuses partially finished project',()=>assert.equal(proof({...FIXTURES.proof,steps:[{code:'x',done:false}]}).result.status,'IN_PROGRESS'));
 test('DNA prefers matching and inspected project',()=>{const x=dna(FIXTURES.dna);assert.ok(x.result.best);assert.equal(x.result.best.id,'T-101');assert.equal(x.result.best.eligible,true);});
 test('DNA material estimate changes with real input',()=>{const a=dna(FIXTURES.dna).result.best?.adaptedUnits;const b=dna({...FIXTURES.dna,area:8}).result.best?.adaptedUnits;assert.equal(typeof a,'number');assert.equal(typeof b,'number');assert.ok((b??0)>(a??0));});
 test('DNA uninspected template does not become verified from high similarity',()=>assert.equal(dna({...FIXTURES.dna,templates:[{id:'fake',homeType:'panel',room:'bath',area:4,inspection:'self'}]}).result.best.eligible,false));

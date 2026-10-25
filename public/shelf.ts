@@ -2,6 +2,7 @@ export type ShelfSurface = 'unknown' | 'concrete' | 'drywall' | 'wood';
 export type ShelfFastener = 'none' | 'concreteAnchor' | 'drywallAnchor' | 'woodScrew';
 export type ShelfReadiness = 'incomplete' | 'blocked' | 'review' | 'candidate';
 export type ShelfSafetyStatus = 'BLOCKED' | 'REVIEW' | 'PRELIMINARY_PASS';
+export type ShelfProofStatus = 'IN_PROGRESS' | 'SELF_REPORTED' | 'EVIDENCE_SUBMITTED' | 'EXPERT_VERIFIED';
 
 export interface ShelfDraft {
   version: 1;
@@ -49,28 +50,33 @@ export interface ShelfEvaluation {
   total: number;
   savings: number;
   candidateProductIDs: string[];
-  proofStatus: 'INCOMPLETE' | 'SELF_RECORDED';
+  proofStatus: ShelfProofStatus;
 }
 
 export const SHELF_STORAGE_KEY = 'oma-one-shelf-v1';
-export const SHELF_STEPS = [
-  {id: 'inspect', title: 'Осмотреть стену и её состояние', after: []},
-  {id: 'utilities', title: 'Проверить скрытые коммуникации', after: ['inspect']},
-  {id: 'load', title: 'Уточнить вес и допустимую нагрузку', after: ['inspect']},
-  {id: 'fastener', title: 'Сверить крепёж с инструкцией', after: ['utilities', 'load']},
-  {id: 'mount', title: 'Выполнить монтаж', after: ['fastener']},
-  {id: 'final', title: 'Проверить результат', after: ['mount']}
-] as const;
+interface BrowserShelfEngine {
+  version: string;
+  steps: Array<{id: string; title: string; after: string[]}>;
+  evaluate(inputJSON: string): string;
+  canComplete(completedJSON: string, stepId: string): boolean;
+  toggle(completedJSON: string, stepId: string): string;
+}
 
-const surfaceFastener: Record<Exclude<ShelfSurface, 'unknown'>, ShelfFastener> = {
-  concrete: 'concreteAnchor',
-  drywall: 'drywallAnchor',
-  wood: 'woodScrew'
+declare global {
+  var omaShelfEngine: BrowserShelfEngine | undefined;
+}
+
+const shelfEngine = (): BrowserShelfEngine => {
+  if (!globalThis.omaShelfEngine) throw new Error('Единый движок правил полки не загружен');
+  return globalThis.omaShelfEngine;
 };
 
-const fastenerProduct: Partial<Record<ShelfFastener, string>> = {
-  concreteAnchor: 'p08',
-  drywallAnchor: 'p09'
+export const SHELF_STEPS = shelfEngine().steps;
+const fastenerEngineID: Record<ShelfFastener, string> = {
+  none: 'unknown',
+  concreteAnchor: 'concrete-anchor',
+  drywallAnchor: 'drywall-anchor',
+  woodScrew: 'wood-screw'
 };
 
 const clampQuantity = (value: unknown) => {
@@ -138,86 +144,54 @@ export function normalizeShelfDraft(value: unknown): ShelfDraft {
 
 export function evaluateShelf(draftInput: ShelfDraft, products: ShelfProduct[]): ShelfEvaluation {
   const draft = normalizeShelfDraft(draftInput);
-  const totalLoadKg = Math.round((draft.shelfWeightKg + draft.plannedLoadKg) * 10) / 10;
-  const critical: string[] = [];
-  const risks: string[] = [];
-
-  if (draft.wall === 'unknown') risks.push('Материал стены не определён. Нужен осмотр основания.');
-  else if (draft.fastener !== 'none' && surfaceFastener[draft.wall] !== draft.fastener) {
-    critical.push('Выбранный крепёж не соответствует указанному материалу стены.');
-  }
-  if (totalLoadKg > 15) risks.push('Общая нагрузка выше демонстрационного порога 15 кг. Нужна проверка специалистом.');
-  if (!draft.utilitiesChecked) risks.push('Скрытые трубы и проводка не проверены. До проверки сверлить нельзя.');
-
-  const status: ShelfSafetyStatus = critical.length ? 'BLOCKED' : risks.length ? 'REVIEW' : 'PRELIMINARY_PASS';
-  const completeInputs = draft.wall !== 'unknown' && draft.shelfWeightKg > 0 && draft.plannedLoadKg > 0 && draft.fastener !== 'none';
-  const fastenerID = fastenerProduct[draft.fastener];
-  let readiness: ShelfReadiness = 'incomplete';
-  if (completeInputs) {
-    if (status === 'BLOCKED') readiness = 'blocked';
-    else if (
-      status === 'PRELIMINARY_PASS' &&
-      totalLoadKg <= 15 &&
-      draft.wallInspected &&
-      draft.manufacturerInstructionsChecked &&
-      Boolean(fastenerID)
-    ) readiness = 'candidate';
-    else readiness = 'review';
-  }
-
-  const candidateProductIDs = readiness === 'candidate' && fastenerID ? ['p07', fastenerID, 'p25'] : [];
-  const inventory = new Map(Object.entries(draft.ownedQuantities).map(([id, quantity]) => [id, clampQuantity(quantity)]));
-  const basket = candidateProductIDs.map(id => {
-    const product = products.find(item => item.id === id);
-    const required = 1;
-    const owned = Math.min(required, inventory.get(id) ?? 0);
-    inventory.set(id, Math.max(0, (inventory.get(id) ?? 0) - owned));
-    const unitPrice = Math.max(0, Number(product?.price) || 0);
-    return {id, name: product?.name ?? id, required, owned, toBuy: required - owned, unitPrice, pay: (required - owned) * unitPrice};
-  });
-  const full = basket.reduce((sum, item) => sum + item.required * item.unitPrice, 0);
-  const total = basket.reduce((sum, item) => sum + item.pay, 0);
-  const allStepsDone = SHELF_STEPS.every(step => draft.completedStepIDs.includes(step.id));
-
+  const photoHashes = draft.photoDataUrl && draft.photoHash ? [draft.photoHash] : [];
+  const output = JSON.parse(shelfEngine().evaluate(JSON.stringify({
+    projectId: draft.id,
+    surface: draft.wall,
+    fastener: fastenerEngineID[draft.fastener],
+    shelfWeightKg: draft.shelfWeightKg,
+    plannedLoadKg: draft.plannedLoadKg,
+    wallInspected: draft.wallInspected,
+    verifiedWiring: draft.utilitiesChecked,
+    manufacturerInstructionsChecked: draft.manufacturerInstructionsChecked,
+    products: products.map(product => ({id: product.id, name: product.name, unitPrice: product.price})),
+    inventory: Object.entries(draft.ownedQuantities).map(([id, qty]) => ({id, qty})),
+    completedStepIds: draft.completedStepIDs,
+    photoHashes
+  }))) as {
+    result: {
+      readiness: ShelfReadiness;
+      totalLoadKg: number;
+      candidateProductIds: string[];
+      antiFail: {status: ShelfSafetyStatus; critical: string[]; risk: string[]};
+      zeroBuy: {items: ShelfBasketItem[]; full: number; after: number; savings: number};
+      proof: {status: ShelfProofStatus};
+    };
+  };
+  const result = output.result;
   return {
-    status,
-    readiness,
-    totalLoadKg,
-    critical,
-    risks,
-    basket,
-    full,
-    total,
-    savings: full - total,
-    candidateProductIDs,
-    proofStatus: allStepsDone && Boolean(draft.photoDataUrl && draft.photoHash) ? 'SELF_RECORDED' : 'INCOMPLETE'
+    status: result.antiFail.status,
+    readiness: result.readiness,
+    totalLoadKg: result.totalLoadKg,
+    critical: result.antiFail.critical,
+    risks: result.antiFail.risk,
+    basket: result.zeroBuy.items,
+    full: result.zeroBuy.full,
+    total: result.zeroBuy.after,
+    savings: result.zeroBuy.savings,
+    candidateProductIDs: result.candidateProductIds,
+    proofStatus: result.proof.status
   };
 }
 
 export function canCompleteShelfStep(draftInput: ShelfDraft, stepID: string): boolean {
   const draft = normalizeShelfDraft(draftInput);
-  const step = SHELF_STEPS.find(item => item.id === stepID);
-  return Boolean(step && step.after.every(dependency => draft.completedStepIDs.includes(dependency)));
+  return shelfEngine().canComplete(JSON.stringify(draft.completedStepIDs), stepID);
 }
 
 export function toggleShelfStep(draftInput: ShelfDraft, stepID: string): ShelfDraft {
   const draft = normalizeShelfDraft(draftInput);
-  if (draft.completedStepIDs.includes(stepID)) {
-    const blocked = new Set<string>([stepID]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const step of SHELF_STEPS) {
-        if (step.after.some(dependency => blocked.has(dependency)) && !blocked.has(step.id)) {
-          blocked.add(step.id);
-          changed = true;
-        }
-      }
-    }
-    draft.completedStepIDs = draft.completedStepIDs.filter(id => !blocked.has(id));
-  } else if (canCompleteShelfStep(draft, stepID)) {
-    draft.completedStepIDs = [...draft.completedStepIDs, stepID];
-  }
+  draft.completedStepIDs = JSON.parse(shelfEngine().toggle(JSON.stringify(draft.completedStepIDs), stepID)) as string[];
   draft.updatedAt = new Date().toISOString();
   return draft;
 }

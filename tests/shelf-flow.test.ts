@@ -5,7 +5,7 @@ import {existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {antiFail, zeroBuy, domino, proof} from '../proof-engine.js';
+import {antiFail, zeroBuy, domino, proof, shelfDecision, SHELF_STEPS} from '../proof-engine.js';
 
 const shelfSteps = [
   {id:'inspect',after:[]}, {id:'utilities',after:['inspect']},
@@ -14,11 +14,13 @@ const shelfSteps = [
 ];
 
 async function webShelfModule(){
+  const engineUrl=pathToFileURL(join(process.cwd(),'dist/public/evidence-engine.js')).href;
+  await import(engineUrl);
   const moduleUrl=pathToFileURL(join(process.cwd(),'dist/public/shelf.js')).href;
   return import(moduleUrl);
 }
 
-test('successful shelf inputs produce a preliminary kit and a self-reported, not inspected, result', () => {
+test('successful shelf inputs produce a preliminary kit and submitted evidence, not expert verification', () => {
   const safety = antiFail({surface:'concrete',fastener:'concrete-anchor',loadKg:7,verifiedWiring:true}).result;
   assert.equal(safety.status,'PRELIMINARY_PASS');
   assert.equal(safety.canAutoApprove,false);
@@ -31,7 +33,8 @@ test('successful shelf inputs produce a preliminary kit and a self-reported, not
   assert.equal(items.after,101);
   assert.equal(domino({order:shelfSteps.map(s=>s.id),steps:shelfSteps}).result.valid,true);
   const recorded = proof({projectId:'local-shelf',steps:shelfSteps.map(s=>({code:s.id,done:true})),photoHashes:['a'.repeat(64)],ownerConsent:false}).result;
-  assert.equal(recorded.status,'SELF_RECORDED');
+  assert.equal(recorded.status,'EVIDENCE_SUBMITTED');
+  assert.equal(recorded.expertVerified,false);
   assert.equal(recorded.canPublishToDNA,false);
 });
 
@@ -42,8 +45,8 @@ test('incompatible anchor is blocked and out-of-order work is rejected', () => {
 
 test('unfinished shelf stays unfinished, including without a photo', () => {
   assert.equal(antiFail({surface:'drywall',fastener:'drywall-anchor',loadKg:7,verifiedWiring:false}).result.status,'REVIEW');
-  assert.equal(proof({projectId:'draft',steps:shelfSteps.map(s=>({code:s.id,done:false})),photoHashes:[]}).result.status,'INCOMPLETE');
-  assert.equal(proof({projectId:'draft',steps:shelfSteps.map(s=>({code:s.id,done:true})),photoHashes:[]}).result.status,'INCOMPLETE');
+  assert.equal(proof({projectId:'draft',steps:shelfSteps.map(s=>({code:s.id,done:false})),photoHashes:[]}).result.status,'IN_PROGRESS');
+  assert.equal(proof({projectId:'draft',steps:shelfSteps.map(s=>({code:s.id,done:true})),photoHashes:[]}).result.status,'SELF_REPORTED');
 });
 
 test('native shelf model passes complete, unsafe and persisted-draft checks', () => {
@@ -91,4 +94,15 @@ test('web Domino completion follows dependencies and revokes downstream steps', 
   assert.equal(draft.completedStepIDs.length,6);
   draft=toggleShelfStep(draft,'inspect');
   assert.deepEqual(draft.completedStepIDs,[]);
+});
+
+test('canonical shelf contract rejects an out-of-order evidence trail', () => {
+  const result=shelfDecision({
+    surface:'concrete',fastener:'concrete-anchor',shelfWeightKg:2,plannedLoadKg:5,
+    wallInspected:true,verifiedWiring:true,manufacturerInstructionsChecked:true,
+    completedStepIds:['mount','inspect','utilities','load','fastener','final'],photoHashes:['a'.repeat(64)]
+  }).result;
+  assert.equal(result.domino.valid,false);
+  assert.equal(result.proof.status,'IN_PROGRESS');
+  assert.equal(SHELF_STEPS.length,6);
 });

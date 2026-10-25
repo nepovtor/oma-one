@@ -27,14 +27,6 @@ enum ShelfFastener: String, Codable, CaseIterable {
         }
     }
 
-    var productID: String? {
-        switch self {
-        case .concreteAnchor: "p08"
-        case .drywallAnchor: "p09"
-        case .none, .woodScrew: nil
-        }
-    }
-
     var engineID: String {
         switch self {
         case .none: "unknown"
@@ -77,42 +69,30 @@ struct ShelfProjectData: Codable, Equatable, Identifiable {
     var allStepsDone: Bool { Self.steps.allSatisfy { completedStepIDs.contains($0.id) } }
     var hasProofPhoto: Bool { photoPath != nil && photoHash != nil }
 
-    func readiness(antiFailStatus: String?) -> ShelfReadiness {
-        guard wall != .unknown, shelfWeightKg > 0, plannedLoadKg > 0, fastener != .none else { return .incomplete }
-        if antiFailStatus == "BLOCKED" { return .blocked }
-        guard utilitiesChecked, wallInspected, manufacturerInstructionsChecked,
-              totalLoadKg <= 15, antiFailStatus == "PRELIMINARY_PASS",
-              fastener.productID != nil else { return .review }
-        return .candidate
-    }
-
-    func candidateProductIDs(antiFailStatus: String?) -> [String] {
-        // Never assemble a shopping kit while the fastening decision is unresolved.
-        guard readiness(antiFailStatus: antiFailStatus) == .candidate,
-              let fastenerID = fastener.productID else { return [] }
-        return ["p07", fastenerID, "p25"]
-    }
-
-    var antiFailInput: [String: Any] {
-        ["surface": wall.rawValue,
-         "fastener": fastener.engineID,
-         "loadKg": totalLoadKg,
-         "verifiedWiring": utilitiesChecked]
-    }
-
-    var dominoInput: [String: Any] {
-        let ids = Self.steps.map { $0.id }
-        let done = completedStepIDs.filter { ids.contains($0) }
-        let order = done + ids.filter { !done.contains($0) }
-        let steps = Self.steps.map { ["id": $0.id, "after": $0.after] as [String: Any] }
-        return ["order": order, "steps": steps]
+    func engineInput(products: [[String: Any]]) -> [String: Any] {
+        let inventory = ownedQuantities.filter { $0.value > 0 }
+            .map { ["id": $0.key, "qty": $0.value] as [String: Any] }
+        return ["projectId": id.uuidString,
+                "surface": wall.rawValue,
+                "fastener": fastener.engineID,
+                "shelfWeightKg": shelfWeightKg,
+                "plannedLoadKg": plannedLoadKg,
+                "wallInspected": wallInspected,
+                "verifiedWiring": utilitiesChecked,
+                "manufacturerInstructionsChecked": manufacturerInstructionsChecked,
+                "products": products,
+                "inventory": inventory,
+                "completedStepIds": completedStepIDs,
+                "photoHashes": hasProofPhoto ? [photoHash!] : []]
     }
 
     var proofInput: [String: Any] {
-        let checklist = Self.steps.map { ["code": $0.id, "done": completedStepIDs.contains($0.id)] as [String: Any] }
+        let checklist = Self.steps.map {
+            ["code": $0.id, "done": completedStepIDs.contains($0.id)] as [String: Any]
+        }
         return ["projectId": id.uuidString,
                 "steps": checklist,
-                "photoHashes": photoHash.map { [$0] } ?? [],
+                "photoHashes": hasProofPhoto ? [photoHash!] : [],
                 "ownerConsent": false]
     }
 }

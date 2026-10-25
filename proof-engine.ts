@@ -2,7 +2,7 @@
 // Each function is independent of a generative model and external services.
 import {createHash} from 'node:crypto';
 
-export const PROOF_VERSION='2026-10-23-evidence.2';
+export const PROOF_VERSION='2026-10-25-evidence.3';
 export interface ProofOutcome<Input = unknown, Result = unknown> {
  module: string;
  version: string;
@@ -27,6 +27,16 @@ export interface SyncCityResult {eligible: boolean; requestCount: number; matchI
 export interface ProofStep {code: string; done: boolean}
 export interface ProofInspector {id: string; approved: boolean}
 export interface ProofInput {projectId?: string; steps?: ProofStep[]; photoHashes?: string[]; inspector?: ProofInspector | null; ownerConsent?: boolean}
+export type ProofStatus = 'IN_PROGRESS' | 'SELF_REPORTED' | 'EVIDENCE_SUBMITTED' | 'EXPERT_VERIFIED';
+export interface ProofState {
+ status: ProofStatus;
+ checklistComplete: boolean;
+ evidenceSubmitted: boolean;
+ expertVerified: boolean;
+ canPublishToDNA: boolean;
+ photoCount: number;
+ inspectorId: string | null;
+}
 export interface DnaTemplate {id: string; homeType: string; room: string; area: number; inspection?: string}
 export interface DnaInput {templates?: DnaTemplate[]; homeType?: string; room?: string; area?: number; qtyPerM2?: number}
 export interface ForgeProject {id: string; userId?: string; problem: string; homeType: string; optIn: boolean}
@@ -79,13 +89,87 @@ export function syncCity({requests=[],selectedId='r1',sharedTripCost=48,individu
  const savingsPerUser=eligible?money(single-shared/members):0;
  return outcome('SyncCity','Delivery/service bundling by zone and slot',{selectedId,sharedTripCost:shared,individualTripCost:single,minGroup:threshold},{eligible,requestCount:members,matchIds:matches.map(x=>x.id),individualTotal:money(members*single),combinedTotal:eligible?shared:null,savingsPerUser,reason:eligible?'Synthetic candidate group: partner quote still required.':'Threshold or business case not met.'},'User identity and full addresses are excluded from match output; no real booking or guaranteed price.',['No real partner pricing or participant consent exists; coordinator must validate operational feasibility.']);
 }
+export function evaluateProofState({steps=[],photoHashes=[],inspector=null,ownerConsent=false}: ProofInput={}): ProofState{
+ const checklist=assertArray<ProofStep>(steps),photos=assertArray<string>(photoHashes).filter(x=>/^[a-f0-9]{64}$/.test(String(x))).map(String);
+ const checklistComplete=checklist.length>0&&checklist.every(x=>x.done===true),evidenceSubmitted=checklistComplete&&photos.length>0;
+ const inspectorId=typeof inspector?.id==='string'&&inspector.id.trim()?idText(inspector.id):null;
+ const expertVerified=evidenceSubmitted&&inspector?.approved===true&&inspectorId!==null;
+ const status: ProofStatus=expertVerified?'EXPERT_VERIFIED':evidenceSubmitted?'EVIDENCE_SUBMITTED':checklistComplete?'SELF_REPORTED':'IN_PROGRESS';
+ return {status,checklistComplete,evidenceSubmitted,expertVerified,canPublishToDNA:expertVerified&&ownerConsent,photoCount:photos.length,inspectorId:expertVerified?inspectorId:null};
+}
 export function proof({projectId='demo-p1',steps=[],photoHashes=[],inspector=null,ownerConsent=false}: ProofInput={}){
- const checklist=assertArray<ProofStep>(steps),photos=assertArray<string>(photoHashes).filter(x=>/^[a-f0-9]{64}$/.test(String(x))).map(String),finished=checklist.length>0&&checklist.every(x=>x.done===true)&&photos.length>0;
- const professional=finished&&!!inspector&&inspector.approved===true&&typeof inspector.id==='string'&&inspector.id.length>0;
- const status=professional?'INSPECTED':finished?'SELF_RECORDED':'INCOMPLETE';
- const attestation={projectId:idText(projectId),checklist:checklist.map(x=>({code:idText(x.code),done:x.done===true})),photoHashes:photos,inspector:professional?inspector.id:null,status};
+ const checklist=assertArray<ProofStep>(steps),photos=assertArray<string>(photoHashes).filter(x=>/^[a-f0-9]{64}$/.test(String(x))).map(String);
+ const state=evaluateProofState({steps:checklist,photoHashes:photos,inspector,ownerConsent});
+ const attestation={projectId:idText(projectId),checklist:checklist.map(x=>({code:idText(x.code),done:x.done===true})),photoHashes:photos,inspector:state.inspectorId,status:state.status};
  const digest=createHash('sha256').update(JSON.stringify(attestation)).digest('hex');
- return outcome('Proof','Traceable evidence record, not automatic certification',{projectId,steps,photoHashesCount:photos.length,inspector:professional?inspector.id:null,ownerConsent},{status,digest,canPublishToDNA:professional&&ownerConsent,completed:finished,photoCount:photos.length},'Hash identifies this exact record; user self-report is NEVER labelled professionally inspected.',['A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection.']);
+ return outcome('Proof','Traceable evidence record, not automatic certification',{projectId,steps,photoHashesCount:photos.length,inspector:state.inspectorId,ownerConsent},{...state,digest,completed:state.checklistComplete},'Hash identifies this exact record; user self-report and submitted evidence are NEVER labelled professionally inspected.',['A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection.']);
+}
+
+export const SHELF_STEPS: DominoStep[]=[
+ {id:'inspect',name:'Осмотреть стену и её состояние',after:[]},
+ {id:'utilities',name:'Проверить скрытые коммуникации',after:['inspect']},
+ {id:'load',name:'Уточнить вес и допустимую нагрузку',after:['inspect']},
+ {id:'fastener',name:'Сверить крепёж с инструкцией',after:['utilities','load']},
+ {id:'mount',name:'Выполнить монтаж',after:['fastener']},
+ {id:'final',name:'Проверить результат',after:['mount']}
+];
+export type ShelfReadiness='incomplete'|'blocked'|'review'|'candidate';
+export interface ShelfCatalogProduct {id: string; name?: string; unitPrice: number}
+export interface ShelfDecisionInput {
+ projectId?: string;
+ surface?: string;
+ fastener?: string;
+ shelfWeightKg?: number;
+ plannedLoadKg?: number;
+ wallInspected?: boolean;
+ verifiedWiring?: boolean;
+ manufacturerInstructionsChecked?: boolean;
+ products?: ShelfCatalogProduct[];
+ inventory?: ZeroBuyInventory[];
+ completedStepIds?: string[];
+ photoHashes?: string[];
+}
+const shelfFastenerProduct: Record<string,string>={'concrete-anchor':'p08','drywall-anchor':'p09'};
+const uniqueShelfStepIds=(value: unknown): string[]=>{
+ const allowed=new Set(SHELF_STEPS.map(step=>step.id));
+ return [...new Set(assertArray<unknown>(value as unknown[]).map(idText).filter(id=>allowed.has(id)))];
+};
+export function canCompleteShelfStep(completedStepIds: string[],stepId: string): boolean{
+ const completed=uniqueShelfStepIds(completedStepIds),step=SHELF_STEPS.find(item=>item.id===stepId);
+ return Boolean(step&&(step.after||[]).every(dependency=>completed.includes(dependency)));
+}
+export function toggleShelfStep(completedStepIds: string[],stepId: string): string[]{
+ let completed=uniqueShelfStepIds(completedStepIds);
+ if(completed.includes(stepId)){
+  const blocked=new Set<string>([stepId]);let changed=true;
+  while(changed){changed=false;for(const step of SHELF_STEPS)if((step.after||[]).some(dependency=>blocked.has(dependency))&&!blocked.has(step.id)){blocked.add(step.id);changed=true;}}
+  completed=completed.filter(id=>!blocked.has(id));
+ }else if(canCompleteShelfStep(completed,stepId))completed=[...completed,stepId];
+ return completed;
+}
+export function shelfDecision(input: ShelfDecisionInput={}){
+ const surface=idText(input.surface||'unknown'),fastener=idText(input.fastener||'unknown');
+ const shelfWeightKg=number(input.shelfWeightKg,0,1000,0),plannedLoadKg=number(input.plannedLoadKg,0,1000,0),totalLoadKg=money(shelfWeightKg+plannedLoadKg);
+ const safety=antiFail({surface,fastener,loadKg:totalLoadKg,verifiedWiring:input.verifiedWiring===true}).result;
+ const completeInputs=surface!=='unknown'&&shelfWeightKg>0&&plannedLoadKg>0&&fastener!=='unknown';
+ const fastenerProductId=shelfFastenerProduct[fastener];let readiness: ShelfReadiness='incomplete';
+ if(completeInputs){
+  if(safety.status==='BLOCKED')readiness='blocked';
+  else if(safety.status==='PRELIMINARY_PASS'&&input.wallInspected===true&&input.manufacturerInstructionsChecked===true&&Boolean(fastenerProductId))readiness='candidate';
+  else readiness='review';
+ }
+ const candidateProductIds=readiness==='candidate'?['p07',fastenerProductId,'p25'].filter((id): id is string=>Boolean(id)):[];
+ const catalog=new Map(assertArray<ShelfCatalogProduct>(input.products).map(product=>[idText(product.id),product]));
+ const requirements=candidateProductIds.map(id=>{const product=catalog.get(id);return {id,name:idText(product?.name||id),qty:1,unitPrice:number(product?.unitPrice,0,1e6,0)};});
+ const basket=zeroBuy({requirements,inventory:assertArray<ZeroBuyInventory>(input.inventory)}).result;
+ const completedStepIds=uniqueShelfStepIds(input.completedStepIds),order=[...completedStepIds,...SHELF_STEPS.map(step=>step.id).filter(id=>!completedStepIds.includes(id))];
+ const sequence=domino({order,steps:SHELF_STEPS}).result;
+ const proofState=evaluateProofState({
+  projectId:input.projectId,
+  steps:SHELF_STEPS.map(step=>({code:step.id,done:sequence.valid&&completedStepIds.includes(step.id)})),
+  photoHashes:input.photoHashes
+ });
+ return outcome('Shelf','AntiFail + ZeroBuy + Domino + Proof contract',{projectId:idText(input.projectId||'local-shelf'),surface,fastener,shelfWeightKg,plannedLoadKg,wallInspected:input.wallInspected===true,verifiedWiring:input.verifiedWiring===true,manufacturerInstructionsChecked:input.manufacturerInstructionsChecked===true,products:assertArray<ShelfCatalogProduct>(input.products),inventory:assertArray<ZeroBuyInventory>(input.inventory),completedStepIds,photoHashesCount:proofState.photoCount},{readiness,totalLoadKg,candidateProductIds,antiFail:safety,zeroBuy:basket,domino:sequence,proof:proofState},'One canonical shelf decision composes the four evidence mechanisms for every client.',['Synthetic compatibility and catalog inputs do not certify a real installation.']);
 }
 export function dna({templates=[],homeType='panel',room='bath',area=4,qtyPerM2=1.1}: DnaInput={}){
  const a=number(area,0.5,200,4),q=number(qtyPerM2,1,2,1.1);

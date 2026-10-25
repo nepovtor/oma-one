@@ -1,7 +1,7 @@
 // Generated from proof-engine.ts. Run npm run build:ios-evidence.
 // OMA ONE - deterministic, auditable, DEMO-ONLY decision prototypes (TypeScript source).
 // Each function is independent of a generative model and external services.
-const PROOF_VERSION = '2026-10-23-evidence.2';
+const PROOF_VERSION = '2026-10-25-evidence.3';
 const number = (v, min, max, def) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def; };
 const money = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
 const assertArray = (v) => Array.isArray(v) ? v : [];
@@ -73,13 +73,84 @@ function syncCity({ requests = [], selectedId = 'r1', sharedTripCost = 48, indiv
     const savingsPerUser = eligible ? money(single - shared / members) : 0;
     return outcome('SyncCity', 'Delivery/service bundling by zone and slot', { selectedId, sharedTripCost: shared, individualTripCost: single, minGroup: threshold }, { eligible, requestCount: members, matchIds: matches.map(x => x.id), individualTotal: money(members * single), combinedTotal: eligible ? shared : null, savingsPerUser, reason: eligible ? 'Synthetic candidate group: partner quote still required.' : 'Threshold or business case not met.' }, 'User identity and full addresses are excluded from match output; no real booking or guaranteed price.', ['No real partner pricing or participant consent exists; coordinator must validate operational feasibility.']);
 }
+function evaluateProofState({ steps = [], photoHashes = [], inspector = null, ownerConsent = false } = {}) {
+    const checklist = assertArray(steps), photos = assertArray(photoHashes).filter(x => /^[a-f0-9]{64}$/.test(String(x))).map(String);
+    const checklistComplete = checklist.length > 0 && checklist.every(x => x.done === true), evidenceSubmitted = checklistComplete && photos.length > 0;
+    const inspectorId = typeof inspector?.id === 'string' && inspector.id.trim() ? idText(inspector.id) : null;
+    const expertVerified = evidenceSubmitted && inspector?.approved === true && inspectorId !== null;
+    const status = expertVerified ? 'EXPERT_VERIFIED' : evidenceSubmitted ? 'EVIDENCE_SUBMITTED' : checklistComplete ? 'SELF_REPORTED' : 'IN_PROGRESS';
+    return { status, checklistComplete, evidenceSubmitted, expertVerified, canPublishToDNA: expertVerified && ownerConsent, photoCount: photos.length, inspectorId: expertVerified ? inspectorId : null };
+}
 function proof({ projectId = 'demo-p1', steps = [], photoHashes = [], inspector = null, ownerConsent = false } = {}) {
-    const checklist = assertArray(steps), photos = assertArray(photoHashes).filter(x => /^[a-f0-9]{64}$/.test(String(x))).map(String), finished = checklist.length > 0 && checklist.every(x => x.done === true) && photos.length > 0;
-    const professional = finished && !!inspector && inspector.approved === true && typeof inspector.id === 'string' && inspector.id.length > 0;
-    const status = professional ? 'INSPECTED' : finished ? 'SELF_RECORDED' : 'INCOMPLETE';
-    const attestation = { projectId: idText(projectId), checklist: checklist.map(x => ({ code: idText(x.code), done: x.done === true })), photoHashes: photos, inspector: professional ? inspector.id : null, status };
+    const checklist = assertArray(steps), photos = assertArray(photoHashes).filter(x => /^[a-f0-9]{64}$/.test(String(x))).map(String);
+    const state = evaluateProofState({ steps: checklist, photoHashes: photos, inspector, ownerConsent });
+    const attestation = { projectId: idText(projectId), checklist: checklist.map(x => ({ code: idText(x.code), done: x.done === true })), photoHashes: photos, inspector: state.inspectorId, status: state.status };
     const digest = __sha256(JSON.stringify(attestation));
-    return outcome('Proof', 'Traceable evidence record, not automatic certification', { projectId, steps, photoHashesCount: photos.length, inspector: professional ? inspector.id : null, ownerConsent }, { status, digest, canPublishToDNA: professional && ownerConsent, completed: finished, photoCount: photos.length }, 'Hash identifies this exact record; user self-report is NEVER labelled professionally inspected.', ['A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection.']);
+    return outcome('Proof', 'Traceable evidence record, not automatic certification', { projectId, steps, photoHashesCount: photos.length, inspector: state.inspectorId, ownerConsent }, { ...state, digest, completed: state.checklistComplete }, 'Hash identifies this exact record; user self-report and submitted evidence are NEVER labelled professionally inspected.', ['A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection.']);
+}
+const SHELF_STEPS = [
+    { id: 'inspect', name: 'Осмотреть стену и её состояние', after: [] },
+    { id: 'utilities', name: 'Проверить скрытые коммуникации', after: ['inspect'] },
+    { id: 'load', name: 'Уточнить вес и допустимую нагрузку', after: ['inspect'] },
+    { id: 'fastener', name: 'Сверить крепёж с инструкцией', after: ['utilities', 'load'] },
+    { id: 'mount', name: 'Выполнить монтаж', after: ['fastener'] },
+    { id: 'final', name: 'Проверить результат', after: ['mount'] }
+];
+const shelfFastenerProduct = { 'concrete-anchor': 'p08', 'drywall-anchor': 'p09' };
+const uniqueShelfStepIds = (value) => {
+    const allowed = new Set(SHELF_STEPS.map(step => step.id));
+    return [...new Set(assertArray(value).map(idText).filter(id => allowed.has(id)))];
+};
+function canCompleteShelfStep(completedStepIds, stepId) {
+    const completed = uniqueShelfStepIds(completedStepIds), step = SHELF_STEPS.find(item => item.id === stepId);
+    return Boolean(step && (step.after || []).every(dependency => completed.includes(dependency)));
+}
+function toggleShelfStep(completedStepIds, stepId) {
+    let completed = uniqueShelfStepIds(completedStepIds);
+    if (completed.includes(stepId)) {
+        const blocked = new Set([stepId]);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const step of SHELF_STEPS)
+                if ((step.after || []).some(dependency => blocked.has(dependency)) && !blocked.has(step.id)) {
+                    blocked.add(step.id);
+                    changed = true;
+                }
+        }
+        completed = completed.filter(id => !blocked.has(id));
+    }
+    else if (canCompleteShelfStep(completed, stepId))
+        completed = [...completed, stepId];
+    return completed;
+}
+function shelfDecision(input = {}) {
+    const surface = idText(input.surface || 'unknown'), fastener = idText(input.fastener || 'unknown');
+    const shelfWeightKg = number(input.shelfWeightKg, 0, 1000, 0), plannedLoadKg = number(input.plannedLoadKg, 0, 1000, 0), totalLoadKg = money(shelfWeightKg + plannedLoadKg);
+    const safety = antiFail({ surface, fastener, loadKg: totalLoadKg, verifiedWiring: input.verifiedWiring === true }).result;
+    const completeInputs = surface !== 'unknown' && shelfWeightKg > 0 && plannedLoadKg > 0 && fastener !== 'unknown';
+    const fastenerProductId = shelfFastenerProduct[fastener];
+    let readiness = 'incomplete';
+    if (completeInputs) {
+        if (safety.status === 'BLOCKED')
+            readiness = 'blocked';
+        else if (safety.status === 'PRELIMINARY_PASS' && input.wallInspected === true && input.manufacturerInstructionsChecked === true && Boolean(fastenerProductId))
+            readiness = 'candidate';
+        else
+            readiness = 'review';
+    }
+    const candidateProductIds = readiness === 'candidate' ? ['p07', fastenerProductId, 'p25'].filter((id) => Boolean(id)) : [];
+    const catalog = new Map(assertArray(input.products).map(product => [idText(product.id), product]));
+    const requirements = candidateProductIds.map(id => { const product = catalog.get(id); return { id, name: idText(product?.name || id), qty: 1, unitPrice: number(product?.unitPrice, 0, 1e6, 0) }; });
+    const basket = zeroBuy({ requirements, inventory: assertArray(input.inventory) }).result;
+    const completedStepIds = uniqueShelfStepIds(input.completedStepIds), order = [...completedStepIds, ...SHELF_STEPS.map(step => step.id).filter(id => !completedStepIds.includes(id))];
+    const sequence = domino({ order, steps: SHELF_STEPS }).result;
+    const proofState = evaluateProofState({
+        projectId: input.projectId,
+        steps: SHELF_STEPS.map(step => ({ code: step.id, done: sequence.valid && completedStepIds.includes(step.id) })),
+        photoHashes: input.photoHashes
+    });
+    return outcome('Shelf', 'AntiFail + ZeroBuy + Domino + Proof contract', { projectId: idText(input.projectId || 'local-shelf'), surface, fastener, shelfWeightKg, plannedLoadKg, wallInspected: input.wallInspected === true, verifiedWiring: input.verifiedWiring === true, manufacturerInstructionsChecked: input.manufacturerInstructionsChecked === true, products: assertArray(input.products), inventory: assertArray(input.inventory), completedStepIds, photoHashesCount: proofState.photoCount }, { readiness, totalLoadKg, candidateProductIds, antiFail: safety, zeroBuy: basket, domino: sequence, proof: proofState }, 'One canonical shelf decision composes the four evidence mechanisms for every client.', ['Synthetic compatibility and catalog inputs do not certify a real installation.']);
 }
 function dna({ templates = [], homeType = 'panel', room = 'bath', area = 4, qtyPerM2 = 1.1 } = {}) {
     const a = number(area, 0.5, 200, 4), q = number(qtyPerM2, 1, 2, 1.1);
@@ -125,8 +196,11 @@ const RUNNERS = { zerobuy: zeroBuy, antifail: antiFail, domino, synccity: syncCi
 
 const OMA_FIXTURES = {"zerobuy":{"requirements":[{"id":"p02","name":"Cartridge","qty":1,"unitPrice":24},{"id":"p03","name":"FUM tape","qty":1,"unitPrice":6.9},{"id":"p04","name":"Hose","qty":2,"unitPrice":16}],"inventory":[{"id":"p03","qty":1},{"id":"p04","qty":1}]},"antifail":{"surface":"drywall","fastener":"concrete-anchor","loadKg":8,"verifiedWiring":false},"domino":{"order":["inspect","pipes","tiles","waterproof","finish"]},"synccity":{"selectedId":"r1","minGroup":3,"individualTripCost":24,"sharedTripCost":48,"requests":[{"id":"r1","city":"Минск","zone":"A","slot":"утро","service":"сантехник"},{"id":"r2","city":"Минск","zone":"A","slot":"утро","service":"сантехник"},{"id":"r3","city":"Минск","zone":"A","slot":"утро","service":"сантехник"},{"id":"r4","city":"Брест","zone":"A","slot":"утро","service":"сантехник"}]},"proof":{"projectId":"DEMO-102","steps":[{"code":"checked_materials","done":true},{"code":"inspection","done":true}],"photoHashes":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],"inspector":null,"ownerConsent":false},"dna":{"homeType":"panel","room":"bath","area":4,"qtyPerM2":1.1,"templates":[{"id":"T-101","homeType":"panel","room":"bath","area":4,"inspection":"professional"},{"id":"T-102","homeType":"brick","room":"bath","area":5,"inspection":"self"},{"id":"T-103","homeType":"panel","room":"entry","area":3,"inspection":"professional"}]},"forge":{"interestThreshold":4,"assemblyCost":30,"minGrossMargin":0.15,"skuCosts":[{"id":"p18","cost":175},{"id":"p19","cost":25},{"id":"p20","cost":49}],"projects":[{"id":"a","problem":"entry-storage","homeType":"panel","optIn":true},{"id":"b","problem":"entry-storage","homeType":"panel","optIn":true},{"id":"c","problem":"entry-storage","homeType":"panel","optIn":true},{"id":"d","problem":"entry-storage","homeType":"panel","optIn":true},{"id":"e","problem":"entry-storage","homeType":"panel","optIn":false}]},"pulse":{"cohortSize":120,"minCases":3,"minCohort":30,"expertApproved":false,"reviewerId":null,"reports":[{"userId":"u1","model":"M-35","verifiedByExpert":true},{"userId":"u2","model":"M-35","verifiedByExpert":true},{"userId":"u3","model":"M-35","verifiedByExpert":true},{"userId":"u3","model":"M-35","verifiedByExpert":true},{"userId":"u4","model":"M-35","verifiedByExpert":false},{"userId":"u9","model":"T-12","verifiedByExpert":true}]},"economics":{"basket":300,"margin":0.2,"service":140,"commission":0.12,"fulfillment":35,"acquisition":15,"support":7,"returns":5,"fixedCost":3000}};
 function omaRun(name, inputJSON) {
-  const runner = RUNNERS[name];
+  const runner = name === 'shelf' ? shelfDecision : RUNNERS[name];
   if (!runner) throw new Error('Unknown module: ' + name);
   const input = inputJSON ? JSON.parse(inputJSON) : OMA_FIXTURES[name];
   return JSON.stringify(runner(input));
+}
+function omaShelfToggle(completedJSON, stepId) {
+  return JSON.stringify(toggleShelfStep(JSON.parse(completedJSON), stepId));
 }

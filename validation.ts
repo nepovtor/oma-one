@@ -30,6 +30,15 @@ export const schemas={
   discountMode:z.boolean().optional(),stockCity:text(40,1).optional()
  }).strict(),
  sequence:z.object({calculationId:id,stepIds:z.array(id).min(1).max(30)}).strict().refine(value=>new Set(value.stepIds).size===value.stepIds.length,{message:'Этапы не должны повторяться'}),
+ shelfEvaluate:z.object({
+  projectId:id.optional(),surface:z.enum(['unknown','concrete','drywall','wood']).optional(),
+  fastener:z.enum(['unknown','concrete-anchor','drywall-anchor','wood-screw']).optional(),
+  shelfWeightKg:z.number().finite().min(0).max(1_000).optional(),plannedLoadKg:z.number().finite().min(0).max(1_000).optional(),
+  wallInspected:z.boolean().optional(),verifiedWiring:z.boolean().optional(),manufacturerInstructionsChecked:z.boolean().optional(),
+  products:z.array(z.object({id,name:text(100).optional(),unitPrice:money}).strict()).max(100).optional(),
+  inventory:z.array(z.object({id,qty:z.number().finite().min(0).max(10_000)}).strict()).max(100).optional(),
+  completedStepIds:z.array(id).max(6).optional(),photoHashes:z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(10).optional()
+ }).strict().refine(value=>!value.completedStepIds||new Set(value.completedStepIds).size===value.completedStepIds.length,{message:'Этапы не должны повторяться'}),
  calculationRef:z.object({calculationId:id}).strict(),
  reservationRef:z.object({reservationId:id}).strict(),
  projectComplete:z.object({

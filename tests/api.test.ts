@@ -9,6 +9,8 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {fileURLToPath} from 'node:url';
 import {startPostgres} from './postgres.js';
+import {shelfDecision} from '../proof-engine.js';
+import type {ShelfDecisionInput} from '../proof-engine.js';
 
 type ApiJson = Record<string, any>;
 interface RequestOptions {csrf?: boolean; headers?: Record<string, string>}
@@ -100,6 +102,15 @@ test('P1 API: sessions, RBAC, validation, audit and atomic stock',async t=>{
  assert.equal(initial.products.length,28);
  assert.equal(initial.scenarios.length,6);
  assert.equal(initial.permissions.canManageForge,false);
+
+ const shelfInput: ShelfDecisionInput={
+  projectId:'shelf-contract',surface:'concrete',fastener:'concrete-anchor',shelfWeightKg:2,plannedLoadKg:5,
+  wallInspected:true,verifiedWiring:true,manufacturerInstructionsChecked:true,
+  products:[{id:'p07',name:'Полка',unitPrice:89},{id:'p08',name:'Дюбель',unitPrice:12},{id:'p25',name:'Очки',unitPrice:19}],
+  inventory:[{id:'p25',qty:1}],completedStepIds:['inspect','utilities','load','fastener','mount','final'],photoHashes:[]
+ };
+ const shelf=await client.call('/shelf/evaluate','POST',shelfInput);
+ assert.deepEqual(shelf,shelfDecision(structuredClone(shelfInput)));
 
  const missingCsrf=await client.request('/inventory','POST',{productId:'p03',qty:1},{csrf:false});
  assert.equal(missingCsrf.response.status,403);

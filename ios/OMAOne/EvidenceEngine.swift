@@ -33,4 +33,15 @@ import JavaScriptCore
               let object = try? JSONSerialization.jsonObject(with:data) as? [String:Any] else { return nil }
         return object
     }
+
+    func toggleShelfStep(_ completed:[String],stepID:String) -> [String]? {
+        guard let context, loadError == nil,
+              let data = try? JSONSerialization.data(withJSONObject:completed),
+              let json = String(data:data,encoding:.utf8),
+              let result = context.objectForKeyedSubscript("omaShelfToggle")?
+                .call(withArguments:[json,stepID])?.toString(),
+              let resultData = result.data(using:.utf8),
+              let ids = try? JSONSerialization.jsonObject(with:resultData) as? [String] else { return nil }
+        return ids
+    }
 }

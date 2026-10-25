@@ -196,6 +196,7 @@ private struct SavedProject: Codable, Identifiable {
     var scenario: String
     var amount: Double
     var completed = false
+    var proofStatus: String? = nil
     var photoName: String? = nil
     var date = Date()
     var shelf: ShelfProjectData? = nil
@@ -320,25 +321,36 @@ private struct Category: Identifiable {
     func complete(_ id: UUID, photo: String? = nil) {
         guard let index = projects.firstIndex(where:{$0.id == id}) else { return }
         if let photo { projects[index].photoName = photo }
-        guard projects[index].photoName != nil else {
-            lastMessage = "Для записи выполнения сначала прикрепите фото. Это не экспертная проверка."
-            return
-        }
         if let shelf = projects[index].shelf {
-            let anti = EvidenceEngine.shared.run("antifail",input:shelf.antiFailInput)?["result"] as? [String:Any]
-            let proof = EvidenceEngine.shared.run("proof",input:shelf.proofInput)?["result"] as? [String:Any]
-            guard shelf.readiness(antiFailStatus:anti?["status"] as? String) == .candidate,
-                  shelf.hasProofPhoto,
-                  shelf.photoPath.map({ FileManager.default.fileExists(atPath:$0) }) == true,
-                  shelf.allStepsDone,
-                  proof?["status"] as? String == "SELF_RECORDED",
-                  (EvidenceEngine.shared.run("domino",input:shelf.dominoInput)?["result"] as? [String:Any])?["valid"] as? Bool == true else {
-                lastMessage = "Сначала проверьте крепёж, завершите этапы по порядку и прикрепите фото."
+            var evaluatedShelf = shelf
+            if let path = shelf.photoPath, !FileManager.default.fileExists(atPath:path) {
+                evaluatedShelf.photoPath = nil
+                evaluatedShelf.photoHash = nil
+            }
+            let catalog = products.map {
+                ["id": $0.id, "name": $0.name, "unitPrice": $0.price] as [String:Any]
+            }
+            let result = EvidenceEngine.shared.run("shelf",input:evaluatedShelf.engineInput(products:catalog))?["result"] as? [String:Any]
+            let proof = result?["proof"] as? [String:Any]
+            let status = proof?["status"] as? String
+            guard result?["readiness"] as? String == ShelfReadiness.candidate.rawValue,
+                  (result?["domino"] as? [String:Any])?["valid"] as? Bool == true,
+                  status == "SELF_REPORTED" || status == "EVIDENCE_SUBMITTED" else {
+                lastMessage = "Сначала проверьте крепёж и завершите все этапы по порядку."
                 return
             }
+            projects[index].proofStatus = status
+        } else {
+            guard projects[index].photoName != nil else {
+                lastMessage = "Для доказательной записи прикрепите фото. Без него доступна только отметка со слов пользователя."
+                return
+            }
+            projects[index].proofStatus = "EVIDENCE_SUBMITTED"
         }
         projects[index].completed = true
-        lastMessage = "Самостоятельное выполнение записано. Экспертная проверка НЕ проведена."
+        lastMessage = projects[index].proofStatus == "EVIDENCE_SUBMITTED"
+            ? "Доказательства сохранены. Экспертная проверка НЕ проведена."
+            : "Выполнение записано со слов пользователя. Доказательства и экспертная проверка отсутствуют."
     }
     func attachProofPhoto(_ id: UUID, photo: String, hash: String? = nil) {
         guard let index = projects.firstIndex(where:{$0.id == id}) else { return }
@@ -1581,20 +1593,25 @@ private struct ShelfFlowScreen: View {
     }
 
     private var antiResult: [String: Any]? {
-        (EvidenceEngine.shared.run("antifail", input: draft.antiFailInput)?["result"] as? [String: Any])
+        shelfResult?["antiFail"] as? [String: Any]
     }
-    private var antiStatus: String? { antiResult?["status"] as? String }
-    private var readiness: ShelfReadiness { draft.readiness(antiFailStatus: antiStatus) }
+    private var catalogInput: [[String: Any]] {
+        store.products.map { ["id": $0.id, "name": $0.name, "unitPrice": $0.price] }
+    }
+    private var shelfResult: [String: Any]? {
+        EvidenceEngine.shared.run("shelf", input:draft.engineInput(products:catalogInput))?["result"] as? [String:Any]
+    }
+    private var readiness: ShelfReadiness {
+        ShelfReadiness(rawValue:shelfResult?["readiness"] as? String ?? "") ?? .incomplete
+    }
     private var dominoValid: Bool {
-        (EvidenceEngine.shared.run("domino", input: draft.dominoInput)?["result"] as? [String: Any])?["valid"] as? Bool == true
+        (shelfResult?["domino"] as? [String: Any])?["valid"] as? Bool == true
     }
     private var listProducts: [Product] {
-        draft.candidateProductIDs(antiFailStatus: antiStatus).compactMap(store.product)
+        (shelfResult?["candidateProductIds"] as? [String] ?? []).compactMap(store.product)
     }
     private var zeroResult: [String: Any]? {
-        let requirements = listProducts.map { ["id": $0.id, "name": $0.name, "qty": 1, "unitPrice": $0.price] as [String: Any] }
-        let inventory = draft.ownedQuantities.filter { $0.value > 0 }.map { ["id": $0.key, "qty": $0.value] as [String: Any] }
-        return EvidenceEngine.shared.run("zerobuy", input: ["requirements": requirements, "inventory": inventory])?["result"] as? [String: Any]
+        shelfResult?["zeroBuy"] as? [String: Any]
     }
     private var zeroItems: [[String: Any]] { zeroResult?["items"] as? [[String: Any]] ?? [] }
     private var shoppingTotal: Double { (zeroResult?["after"] as? NSNumber)?.doubleValue ?? 0 }
@@ -1678,11 +1695,8 @@ private struct ShelfFlowScreen: View {
                     ForEach(ShelfProjectData.steps.indices, id: \.self) { index in
                         let step = ShelfProjectData.steps[index]
                         Button {
-                            if let index = draft.completedStepIDs.firstIndex(of: step.id) {
-                                draft.completedStepIDs.remove(at: index)
-                            } else {
-                                draft.completedStepIDs.append(step.id)
-                            }
+                            draft.completedStepIDs = EvidenceEngine.shared
+                                .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs
                         } label: {
                             HStack(spacing: 11) {
                                 Image(systemName: draft.completedStepIDs.contains(step.id) ? "checkmark.circle.fill" : "circle")
@@ -1710,7 +1724,7 @@ private struct ShelfFlowScreen: View {
                         store.complete(draft.id)
                         message = store.lastMessage
                     }
-                    .disabled(readiness != .candidate || !draft.hasProofPhoto || !draft.allStepsDone || !dominoValid)
+                    .disabled(readiness != .candidate || !draft.allStepsDone || !dominoValid)
                     .font(.system(size: 14, weight: .semibold))
                     if isRecorded { Text("Выполнение записано · экспертной проверки нет").foregroundStyle(Style.blue) }
                 }.padding(18).modifier(OmaCardSurface(radius: 20))
@@ -1822,7 +1836,7 @@ private struct ShelfFlowScreen: View {
         guard zeroResult != nil else { message = "Локальный расчёт недоступен"; return }
         for item in zeroItems {
             guard let id = item["id"] as? String, let count = (item["toBuy"] as? NSNumber)?.intValue,
-                  draft.candidateProductIDs(antiFailStatus: antiStatus).contains(id), count > 0 else { continue }
+                  listProducts.contains(where: { $0.id == id }), count > 0 else { continue }
             store.add(id, qty: count)
         }
         store.saveShelf(draft, amount: shoppingTotal)

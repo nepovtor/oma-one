@@ -16,6 +16,7 @@ import {asAppError} from './types.js';
 import type {AppError, AppState, Calculation, ProjectStep, Reservation, Role, User} from './types.js';
 import type {SessionRecord} from './db.js';
 import type {OidcResult} from './oidc.js';
+import {shelfDecision} from './proof-engine.js';
 
 interface RequestContext {
  method: string;
@@ -128,6 +129,7 @@ async function route(ctx: RequestContext): Promise<unknown>{
  if(method==='POST'&&pathname==='/auth/logout'){parse(schemas.empty,ctx.data);await store.deleteSession(ctx.sessionToken,{correlationId:ctx.requestId,ip:ctx.ip});return {payload:{ok:true},cookies:clearSessionCookies({secure:ctx.secure})};}
  if(method==='GET'&&pathname==='/bootstrap'){const state=await store.readState();return bootstrap(state,getUser(state,ctx.user.id),demoAuthEnabled());}
  if(method==='GET'&&pathname==='/scenarios')return scenarios;
+ if(method==='POST'&&pathname==='/shelf/evaluate')return shelfDecision(parse(schemas.shelfEvaluate,ctx.data));
 
  if(method==='POST'&&pathname==='/users'){
   if(!demoAuthEnabled())throw err('Создание демо-профилей отключено',403,'FORBIDDEN');

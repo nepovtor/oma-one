@@ -5,7 +5,7 @@ const modules=[
  {id:'antifail',title:'AntiFail',engine:'AntiFail',decision:'BLOCKED'},
  {id:'domino',title:'Domino',engine:'Domino',decision:'Порядок отклонён'},
  {id:'synccity',title:'SyncCity',engine:'SyncCity',decision:'Кандидат на группу'},
- {id:'proof',title:'Proof',engine:'Proof',decision:'SELF_RECORDED'},
+ {id:'proof',title:'Proof',engine:'Proof',decision:'EVIDENCE_SUBMITTED'},
  {id:'dna',title:'OMA DNA',engine:'DNA',decision:'Шаблон-кандидат'},
  {id:'forge',title:'OMA FORGE',engine:'FORGE',decision:'Идея для закупщика'},
  {id:'pulse',title:'OMA PULSE',engine:'PULSE',decision:'Без внешних уведомлений'},
