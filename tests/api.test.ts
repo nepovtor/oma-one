@@ -175,4 +175,12 @@ test('P1 API: sessions, RBAC, validation, audit and atomic stock',async t=>{
 
  const retired=await fetch(url+'/api/bootstrap');
  assert.equal(retired.status,410);
+
+ const malformed=await fetch(url+'/%E0%A4%A');
+ assert.equal(malformed.status,400);
+ assert.equal(await malformed.text(),'Bad Request');
+ const healthAfterMalformed=await fetch(url+'/api/v1/health');
+ assert.equal(healthAfterMalformed.status,200);
+ const traversal=await fetch(url+'/%2e%2e%2f.env.example');
+ assert.equal(traversal.status,403);
 });

@@ -11,6 +11,7 @@
     "start": "npm run build && node dist/server.js",
     "dev": "npm run build && concurrently --kill-others \"tsc -p tsconfig.node.json --watch --preserveWatchOutput\" \"tsc -p tsconfig.web.json --watch --preserveWatchOutput\" \"node --watch dist/server.js\"",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:e2e": "npm run build && playwright install --with-deps chromium && playwright test",
     "migrate": "npm run build && node dist/scripts/migrate.js",
     "reset": "npm run build && node dist/scripts/reset.js",
     "db:up": "docker compose up -d --wait db",
@@ -31,6 +32,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^20.19.43",
     "@types/pg": "^8.15.6",
     "concurrently": "^9.2.1",

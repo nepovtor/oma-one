@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import type {ChildProcess} from 'node:child_process';
+import fs from 'node:fs/promises';
 import {FIXTURES} from '../proof-fixtures.js';
 const port=25000+process.pid%10000;
 const base=`http://127.0.0.1:${port}`;
@@ -13,7 +14,12 @@ test('Demo HTTP: start server and check status',async()=>{
  throw new Error('Demo server did not start');
 });
 test('Demo HTTP: mobile lab HTML, JS and CSS served',async()=>{
- for(const [uri,mime] of [['/proof.html','text/html'],['/proof.css','text/css'],['/proof-ui.js','javascript']]){const r=await fetch(base+uri);assert.equal(r.status,200);assert.ok((r.headers.get('content-type')??'').includes(mime));assert.ok((await r.text()).length>500);}
+ for(const [uri,filename,mime] of [['/proof.html','proof.html','text/html'],['/proof.css','proof.css','text/css'],['/proof-ui.js','proof-ui.js','javascript']]){
+  const response=await fetch(base+uri);assert.equal(response.status,200);assert.ok((response.headers.get('content-type')??'').includes(mime));
+  const actual=Buffer.from(await response.arrayBuffer()),expected=await fs.readFile(new URL('../'+filename,import.meta.url));
+  assert.deepEqual(actual,expected,`${uri} must be served as the original bytes`);
+ }
+ const root=await fetch(base+'/');assert.equal(root.status,200);assert.match(await root.text(),/^<!DOCTYPE html>/);
 });
 test('Demo HTTP: every fixture has executable route and explanatory evidence',async()=>{
  for(const [id,input] of Object.entries(FIXTURES)){

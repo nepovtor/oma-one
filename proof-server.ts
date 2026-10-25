@@ -13,7 +13,8 @@ const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PROOF_PORT||8790);
 const types: Record<string, string>={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8'};
 function send(res: ServerResponse,status: number,body: unknown,type='application/json; charset=utf-8'){
- res.writeHead(status,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','content-security-policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"});res.end(typeof body==='string'?body:JSON.stringify(body));
+ const payload=typeof body==='string'||Buffer.isBuffer(body)?body:JSON.stringify(body);
+ res.writeHead(status,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','content-security-policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"});res.end(payload);
 }
 const allowed=new Map<string, string>([['/proof.html','proof.html'],['/','proof.html'],['/proof-ui.js','proof-ui.js'],['/proof.css','proof.css']]);
 const server=http.createServer(async(req,res)=>{

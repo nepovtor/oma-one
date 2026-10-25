@@ -29,7 +29,8 @@ npm start
 npm run typecheck  # строгая проверка Node и браузерного кода без генерации файлов
 npm run build      # компиляция TypeScript и копирование статических файлов в dist/
 npm run dev        # сборка, watch-компиляция и перезапуск Node-сервера
-npm test       # unit + интеграционный тест на изолированном PostgreSQL
+npm test           # unit + интеграционный тест на изолированном PostgreSQL
+npm run test:e2e   # Chromium: 9 расчётов Evidence Lab и мобильная ширина 390 px
 npm run migrate
 npm run reset  # восстановить seed и завершить активные сессии
 npm run db:down

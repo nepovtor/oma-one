@@ -229,7 +229,8 @@ const server=http.createServer(async(req,res)=>{
  if(url.pathname.startsWith(API_PREFIX+'/')||url.pathname===API_PREFIX){await apiHandler(req,res,url);return;}
  if(url.pathname.startsWith('/api/')){send(res,410,{error:{code:'API_VERSION_RETIRED',message:'Используйте /api/v1',correlationId:correlationId(req),retryable:false,details:[]}});return;}
  if(req.method!=='GET'&&req.method!=='HEAD'){applySecurityHeaders(res);res.writeHead(405);res.end();return;}
- const pathname=decodeURIComponent(url.pathname),normalized=path.resolve(staticDir,'.'+pathname);if(!normalized.startsWith(staticDir+path.sep)&&normalized!==staticDir){applySecurityHeaders(res);res.writeHead(403);res.end();return;}
+ let pathname: string;try{pathname=decodeURIComponent(url.pathname);}catch{applySecurityHeaders(res);res.writeHead(400,{'content-type':'text/plain; charset=utf-8'});res.end(req.method==='HEAD'?'':'Bad Request');return;}
+ const normalized=path.resolve(staticDir,'.'+pathname);if(!normalized.startsWith(staticDir+path.sep)&&normalized!==staticDir){applySecurityHeaders(res);res.writeHead(403);res.end();return;}
  let filename=normalized;if(!fs.existsSync(filename)||fs.statSync(filename).isDirectory())filename=path.join(staticDir,'index.html');
  try{const content=await fs.promises.readFile(filename);applySecurityHeaders(res);res.writeHead(200,{'content-type':mimetypes[path.extname(filename)]||'application/octet-stream','cache-control':filename.endsWith('index.html')?'no-cache':'public, max-age=300'});res.end(req.method==='HEAD'?'':content);}catch{applySecurityHeaders(res);res.writeHead(404);res.end();}
 });
