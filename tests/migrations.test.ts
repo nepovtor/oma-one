@@ -23,7 +23,9 @@ test('migrations 004 and 005 must not promote legacy photos or flags into verifi
  const legacy={version:2,projects:[
   {id:'self',plan:{steps:[{id:'one'},{id:'two'}]},proof:{checklist:[true,true],verified:'self',image:null,date:'2026-01-01'}},
   {id:'photo',plan:{steps:[{id:'one'}]},proof:{checklist:[true],verified:'self',object:{key:'proof/old.jpg'},date:'2026-01-01'}},
-  {id:'old-expert',plan:{steps:[{id:'one'}]},proof:{checklist:[true],verified:'expert',object:{key:'proof/legacy.jpg'},date:'2026-01-01'}}
+  {id:'old-expert',plan:{steps:[{id:'one'}]},proof:{checklist:[true],verified:'expert',object:{key:'proof/legacy.jpg'},date:'2026-01-01'}},
+  {id:'draft',plan:{steps:[{id:'one'}]},proof:null},
+  {id:'missing-proof',plan:{steps:[{id:'one'}]}}
  ]};
  await pool.query('INSERT INTO app_state(singleton,version,payload) VALUES(true,1,$1::jsonb)',[JSON.stringify(legacy)]);
  await pool.end();
@@ -31,7 +33,8 @@ test('migrations 004 and 005 must not promote legacy photos or flags into verifi
  const result=await store.pool.query('SELECT payload FROM app_state WHERE singleton=true');
  const payload=result.rows[0].payload;
  assert.equal(payload.version,3);
- for(const project of payload.projects){
+ assert.equal(payload.projects.length,5);
+ for(const project of payload.projects.filter((item: {proof?: unknown})=>item.proof)){
   assert.equal(project.proof.status,'SELF_REPORTED',project.id);
   assert.equal(project.proof.verified,'self',project.id);
   assert.equal(project.proof.inspectorId,null,project.id);
@@ -39,6 +42,8 @@ test('migrations 004 and 005 must not promote legacy photos or flags into verifi
  }
  assert.deepEqual(payload.projects[0].proof.stepIds,['one','two']);
  assert.deepEqual(payload.projects[1].proof.stepIds,['one']);
+ assert.equal(payload.projects[3].proof,null);
+ assert.equal(Object.prototype.hasOwnProperty.call(payload.projects[4],'proof'),false);
  assert.equal((await store.readState()).projects[2].proof?.status,'SELF_REPORTED');
  await store.close();
 });

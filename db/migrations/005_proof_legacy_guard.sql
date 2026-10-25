@@ -50,7 +50,7 @@ decisions AS (
 ),
 rewritten AS (
  SELECT COALESCE(jsonb_agg(
-   CASE WHEN jsonb_typeof(project->'proof')<>'object' THEN project
+   CASE WHEN jsonb_typeof(project->'proof') IS DISTINCT FROM 'object' THEN project
    ELSE jsonb_set(project,'{proof}',(project->'proof') || jsonb_build_object(
      'status',next_status,
      'verified',CASE WHEN next_status='EXPERT_VERIFIED' THEN 'expert' ELSE 'self' END,
