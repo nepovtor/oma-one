@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import pg from 'pg';
+import type {Pool as PgPool} from 'pg';
 import {createStore} from '../db.js';
 import {startPostgres} from './postgres.js';
 
 const {Pool}=pg;
 
-async function applyMigrations(pool: pg.Pool,files: string[]){
+async function applyMigrations(pool: PgPool,files: string[]){
  for(const file of files){
   await pool.query(await fs.readFile(path.join(process.cwd(),'db/migrations',file),'utf8'));
   await pool.query('INSERT INTO schema_migrations(version) VALUES($1)',[file]);
