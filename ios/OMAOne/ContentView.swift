@@ -1328,6 +1328,7 @@ private struct FeatureScreen: View {
     @State private var status = ""
     @State private var evidenceResult:[String:Any]?
     @State private var evidenceError = false
+    @State private var pulseConfirmedReports = 2
     var body: some View {
         Form {
             Section {
@@ -1394,6 +1395,12 @@ private struct FeatureScreen: View {
         case .domino:
             return ["order":swapped ? ["inspect","pipes","tiles","waterproof","finish"] :
                         ["inspect","pipes","waterproof","tiles","finish"]]
+        case .synccity:
+            let count = store.joinedSyncCity ? 5 : 4
+            let requests = (0..<count).map {
+                ["id":"request-\($0)","city":store.city,"zone":"demo-zone","slot":"2026-11-04","service":"plumbing"]
+            }
+            return ["requests":requests,"selectedId":"request-0","sharedTripCost":48,"individualTripCost":24,"minGroup":5]
         case .dna:
             return ["homeType":"panel","room":"bath","area":roomArea,"qtyPerM2":1.1,
                     "templates":[["id":"T-101","homeType":"panel","room":"bath","area":4,"inspection":"professional"]]]
@@ -1405,7 +1412,17 @@ private struct FeatureScreen: View {
             return ["projectId":id.uuidString,
                     "steps":[["code":"self_report", "done":project.completed]],
                     "photoHashes":hash.map { [$0] } ?? [], "ownerConsent":false]
-        default: return nil // Explicit synthetic fixture for modules without equivalent local inputs.
+        case .forge:
+            let count = store.votedForge ? 4 : 3
+            let projects = (0..<count).map {
+                ["id":"interest-\($0)","userId":"synthetic-\($0)","problem":"small-entry","homeType":"flat","optIn":true] as [String:Any]
+            }
+            return ["projects":projects,"interestThreshold":4,"skuCosts":[["id":"storage","cost":120]],"assemblyCost":30,"minGrossMargin":0.15]
+        case .pulse:
+            let reports = (0..<pulseConfirmedReports).map {
+                ["userId":"synthetic-\($0)","model":"A35","verifiedByExpert":true] as [String:Any]
+            }
+            return ["reports":reports,"cohortSize":120,"minCases":3,"minCohort":30,"expertApproved":false]
         }
     }
     private func evidenceSummary(_ output:[String:Any]) -> String {
@@ -1559,6 +1576,7 @@ private struct FeatureScreen: View {
                 Text("В тестовой базе есть несколько сообщений о похожем компоненте. Это не доказательство дефекта вашей установки.").font(.subheadline)
                 HStack{Text("Источник");Spacer();Text("Синтетические записи")}
                 HStack{Text("Достоверность");Spacer();Text("Не подтверждена").foregroundColor(.orange)}
+                Stepper("Синтетически подтверждённых: \(pulseConfirmedReports)",value:$pulseConfirmedReports,in:0...5)
                 Button(store.subscribedPulse ? "Отключить наблюдение" : "Включить наблюдение") {withAnimation(reduceMotion ? nil : OmaMotion.change) {store.subscribedPulse.toggle()}}
             }
             Section("Следующие действия") {

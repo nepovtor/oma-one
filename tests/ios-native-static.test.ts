@@ -20,6 +20,11 @@ test('native feedback is visual, confirms cart additions, and has no haptics',as
  assert.match(src,/kitAdded \? "Комплект добавлен"/);
  assert.doesNotMatch(src,/UI(?:Impact|Selection|Notification)FeedbackGenerator|AudioServicesPlaySystemSound/);
 });
+test('native SyncCity, DNA, FORGE and PULSE screens feed their current inputs to the shared engine',async()=>{
+ const src=await read('ios/OMAOne/ContentView.swift');
+ for(const marker of ['let count = store.joinedSyncCity ? 5 : 4','"area":roomArea','let count = store.votedForge ? 4 : 3','0..<pulseConfirmedReports'])assert.ok(src.includes(marker),marker);
+ assert.doesNotMatch(src,/default: return nil \/\/ Explicit synthetic fixture/);
+});
 test('iOS native demo does not require an unavailable fixed Mac hostname',async()=>{
  const swift=await read('ios/OMAOne/WebApp.swift');
  const plist=await read('ios/OMAOne/Info.plist');

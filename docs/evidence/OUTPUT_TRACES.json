@@ -1,10 +1,10 @@
 {
-  "proofVersion": "2026-10-23-evidence.2",
+  "proofVersion": "2026-10-25-evidence.3",
   "generatedFrom": "synthetic fixtures",
   "modules": {
     "zerobuy": {
       "module": "ZeroBuy",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Verified subtraction and no double-counting",
       "inputs": {
         "requirements": [
@@ -86,7 +86,7 @@
     },
     "antifail": {
       "module": "AntiFail",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Compatibility + safety gate",
       "inputs": {
         "surface": "drywall",
@@ -116,7 +116,7 @@
     },
     "domino": {
       "module": "Domino",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Topological dependency validation",
       "inputs": {
         "order": [
@@ -184,7 +184,7 @@
     },
     "synccity": {
       "module": "SyncCity",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Delivery/service bundling by zone and slot",
       "inputs": {
         "selectedId": "r1",
@@ -213,7 +213,7 @@
     },
     "proof": {
       "module": "Proof",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Traceable evidence record, not automatic certification",
       "inputs": {
         "projectId": "DEMO-102",
@@ -232,13 +232,17 @@
         "ownerConsent": false
       },
       "result": {
-        "status": "SELF_RECORDED",
-        "digest": "038a78fa4e9f7aa5b9272ab848ae7c7eb47d8219dc1e8703b44eeba62f600168",
+        "status": "EVIDENCE_SUBMITTED",
+        "checklistComplete": true,
+        "evidenceSubmitted": true,
+        "expertVerified": false,
         "canPublishToDNA": false,
-        "completed": true,
-        "photoCount": 1
+        "photoCount": 1,
+        "inspectorId": null,
+        "digest": "c69718a05a791ca89d03739d065d79e5a8127230f475e5afc545bbca20024559",
+        "completed": true
       },
-      "explanation": "Hash identifies this exact record; user self-report is NEVER labelled professionally inspected.",
+      "explanation": "Hash identifies this exact record; user self-report and submitted evidence are NEVER labelled professionally inspected.",
       "limits": [
         "A digest is not proof that a photo is genuine. Real uploads require metadata stripping, privacy consent and independent inspection."
       ],
@@ -247,7 +251,7 @@
     },
     "dna": {
       "module": "DNA",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Ranking and room-specific adaptation",
       "inputs": {
         "homeType": "panel",
@@ -306,7 +310,7 @@
     },
     "forge": {
       "module": "FORGE",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "New kit opportunity, backed by opt-in demand",
       "inputs": {
         "projects": [
@@ -381,7 +385,7 @@
     },
     "pulse": {
       "module": "PULSE",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Verified independent incidents + review gate",
       "inputs": {
         "reportsCount": 6,
@@ -421,7 +425,7 @@
     },
     "economics": {
       "module": "Economics",
-      "version": "2026-10-23-evidence.2",
+      "version": "2026-10-25-evidence.3",
       "what": "Auditable unit economics and break-even",
       "inputs": {
         "basket": 300,
