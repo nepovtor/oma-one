@@ -9,6 +9,7 @@ const copies: ReadonlyArray<readonly [string, string]> = [
   ['public/styles.css', 'public/styles.css'],
   ['public/manifest.webmanifest', 'public/manifest.webmanifest'],
   ['public/icons', 'public/icons'],
+  ['public/products', 'public/products'],
   ['proof.html', 'proof.html'],
   ['proof.css', 'proof.css'],
   ['db/migrations', 'db/migrations']
