@@ -6,7 +6,9 @@ import pg from 'pg';
 import type {Pool as PgPool, PoolClient} from 'pg';
 import {seed} from './seed.js';
 import {asAppError} from './types.js';
-import type {AppState} from './types.js';
+import type {AppError,AppState} from './types.js';
+import {createDemoFinanceState} from './finance-domain.js';
+import type {FinanceState} from './finance-domain.js';
 
 const {Pool}=pg;
 const root=path.dirname(fileURLToPath(import.meta.url));
@@ -170,6 +172,34 @@ export async function createStore(options: StoreOptions={}){
   if(result.rowCount)await audit({actorUserId:result.rows[0].user_id,action:'session.deleted',resourceType:'session',correlationId:meta.correlationId||'session',ip:meta.ip||''});
  }
 
+ async function readFinanceState(userId: string): Promise<{revision:number;state:FinanceState}>{
+  await pool.query(`INSERT INTO finance_states(user_id,payload) VALUES($1,$2::jsonb) ON CONFLICT (user_id) DO NOTHING`,[userId,JSON.stringify(createDemoFinanceState())]);
+  const result=await pool.query('SELECT revision,payload FROM finance_states WHERE user_id=$1',[userId]);
+  if(!result.rowCount)throw new Error('Finance state is not initialized');
+  return {revision:Number(result.rows[0].revision),state:clone(result.rows[0].payload)};
+ }
+
+ async function saveFinanceState(userId: string,state: FinanceState,expectedRevision: number,meta: AuditMeta): Promise<{revision:number;state:FinanceState}>{
+  const client=await pool.connect();
+  try{
+   await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+   const current=await client.query('SELECT revision FROM finance_states WHERE user_id=$1 FOR UPDATE',[userId]);
+   if(!current.rowCount){
+    if(expectedRevision!==0){const conflict: AppError=new Error('Финансовый план изменён в другой сессии');conflict.status=409;conflict.code='FINANCE_REVISION_CONFLICT';throw conflict;}
+    await client.query('INSERT INTO finance_states(user_id,payload) VALUES($1,$2::jsonb)',[userId,JSON.stringify(state)]);
+   }else{
+    const revision=Number(current.rows[0].revision);
+    if(revision!==expectedRevision){const conflict: AppError=new Error('Финансовый план изменён в другой сессии');conflict.status=409;conflict.code='FINANCE_REVISION_CONFLICT';throw conflict;}
+    await client.query('UPDATE finance_states SET revision=revision+1,payload=$2::jsonb,updated_at=now() WHERE user_id=$1',[userId,JSON.stringify(state)]);
+   }
+   await client.query(`INSERT INTO audit_events(actor_user_id,action,resource_type,resource_id,correlation_id,ip_hash,metadata)
+     VALUES($1,$2,'finance_state',$1,$3,$4,$5::jsonb)`,[userId,meta.action,meta.correlationId,meta.ip?hashIp(meta.ip):null,JSON.stringify(meta.metadata||{})]);
+   const saved=await client.query('SELECT revision,payload FROM finance_states WHERE user_id=$1',[userId]);
+   await client.query('COMMIT');
+   return {revision:Number(saved.rows[0].revision),state:clone(saved.rows[0].payload)};
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+ }
+
  async function reset(){
   const value=normalizeState(seed());
   const client=await pool.connect();
@@ -177,11 +207,12 @@ export async function createStore(options: StoreOptions={}){
    await client.query('BEGIN');
    await client.query('UPDATE app_state SET version=version+1,payload=$1::jsonb,updated_at=now() WHERE singleton=true',[JSON.stringify(value)]);
    await client.query('DELETE FROM user_sessions');
+   await client.query('DELETE FROM finance_states');
    await client.query(`INSERT INTO audit_events(actor_user_id,action,resource_type,correlation_id,metadata)
      VALUES(NULL,'system.reset','application','reset',$1::jsonb)`,[JSON.stringify({seedVersion:value.version})]);
    await client.query('COMMIT');
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
  }
 
- return {pool,readState,mutate,audit,createSession,getSession,deleteSession,reset,hash,close:()=>pool.end()};
+ return {pool,readState,mutate,audit,createSession,getSession,deleteSession,readFinanceState,saveFinanceState,reset,hash,close:()=>pool.end()};
 }

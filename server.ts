@@ -130,6 +130,11 @@ async function route(ctx: RequestContext): Promise<unknown>{
  if(method==='GET'&&pathname==='/auth/session')return {user:{id:ctx.user.id,name:ctx.user.name,roles:ctx.user.roles||['client']}};
  if(method==='POST'&&pathname==='/auth/logout'){parse(schemas.empty,ctx.data);await store.deleteSession(ctx.sessionToken,{correlationId:ctx.requestId,ip:ctx.ip});return {payload:{ok:true},cookies:clearSessionCookies({secure:ctx.secure})};}
  if(method==='GET'&&pathname==='/bootstrap'){const state=await store.readState();return bootstrap(state,getUser(state,ctx.user.id),demoAuthEnabled());}
+ if(method==='GET'&&pathname==='/finance')return store.readFinanceState(ctx.user.id);
+ if(method==='PUT'&&pathname==='/finance'){
+  const input=parse(schemas.financeStateSave,ctx.data);
+  return store.saveFinanceState(ctx.user.id,input.state,input.revision,mutationMeta(ctx,'finance.state_saved','finance_state',ctx.user.id,{mode:input.state.mode}));
+ }
  if(method==='GET'&&pathname==='/scenarios')return scenarios;
  if(method==='POST'&&pathname==='/shelf/evaluate')return shelfDecision(parse(schemas.shelfEvaluate,ctx.data));
 

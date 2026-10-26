@@ -5,6 +5,7 @@ let state:FinanceState;
 let owner='demo1';
 let screen='dashboard';
 let transactionFilter:TransactionKind|null=null;
+let revision=0;
 const entities:Record<string,string>={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const esc=(value:unknown)=>String(value??'').replace(/[&<>"']/g,char=>entities[char]||char);
 const storageKey=()=>`oma-finance-demo-v1:${owner}`;
@@ -26,6 +27,9 @@ export function loadFinanceState(userId:string){
 }
 
 export function replaceFinanceState(next:FinanceState){if(next.mode!=='DEMO')throw new Error('PWA Stage 1 accepts only isolated DEMO state');state=next;persist();}
+export function hydrateFinanceState(payload:{revision:number;state:FinanceState}){if(payload.state.mode!=='DEMO')throw new Error('PWA Stage 1 accepts only isolated DEMO state');revision=payload.revision;state=payload.state;persist();}
+export function financeSavePayload(){return {revision,state};}
+export function acceptFinanceSave(payload:{revision:number;state:FinanceState}){revision=payload.revision;replaceFinanceState(payload.state);}
 export function currentFinanceState(){return state;}
 
 export function syncFinanceMaterials(cartMinor:number){

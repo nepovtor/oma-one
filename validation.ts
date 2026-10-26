@@ -8,6 +8,20 @@ const text=(max: number,min=0)=>z.string().trim().min(min).max(max);
 const positiveInt=(max=10_000)=>z.number().int().min(1).max(max);
 const money=z.number().finite().min(0).max(10_000_000);
 const empty=z.object({}).strict();
+const minor=z.number().int().min(0).max(1_000_000_000_000);
+const financeMoney=z.object({minor,currency:z.literal('BYN')}).strict();
+const financeMode=z.enum(['DEMO','SANDBOX','LIVE']);
+const financeAccount=z.object({id,providerAccountId:id,name:text(100,1),balance:financeMoney,available:financeMoney,source:financeMode}).strict();
+const cardControls=z.object({online:z.boolean(),contactless:z.boolean(),cashWithdrawal:z.boolean(),monthlyLimitMinor:minor}).strict();
+const financeCard=z.object({id,providerCardId:id,accountId:id,name:text(100,1),maskedPan:z.string().regex(/^•••• \d{4}$/),status:z.enum(['ACTIVE','BLOCKED','PREPARING']),kind:z.enum(['VIRTUAL','PHYSICAL']),network:text(40).nullable(),controls:cardControls,source:financeMode,synthetic:z.boolean()}).strict();
+const financeTransaction=z.object({id,providerTransactionId:id,accountId:id,occurredAt:z.iso.datetime(),amount:financeMoney,direction:z.enum(['DEBIT','CREDIT']),kind:z.enum(['PURCHASE','TRANSFER','SERVICE','REFUND','HOME_PROJECT','TOP_UP']),category:text(80,1),counterparty:text(120,1),status:z.enum(['PENDING','AUTHORIZED','SETTLED','DECLINED','REVERSED']),source:financeMode,projectId:id.nullable(),synthetic:z.boolean()}).strict();
+const budgetLine=z.object({id,kind:z.enum(['MATERIALS','SERVICES','DELIVERY','EXTRA','RESERVE']),title:text(100,1),estimatedMinor:minor,actualMinor:minor.nullable(),source:z.enum(['CART','MANUAL','ZEROBUY'])}).strict();
+const financePlan=z.object({id,projectId:id,projectTitle:text(120,1),budgetMinor:minor,lines:z.array(budgetLine).min(1).max(20),updatedAt:z.iso.datetime()}).strict();
+const milestone=z.object({id,projectId:id,title:text(100,1),amountMinor:minor,date:text(20,1),stage:text(80,1),dependsOn:z.array(id).max(20),status:z.enum(['PLANNED','MANUALLY_PAID','CANCELLED']),note:text(300),linkedTransactionId:id.nullable()}).strict();
+const savingsGoal=z.object({id,name:text(100,1),targetMinor:minor,savedMinor:minor,targetDate:text(30,1),projectId:id.nullable(),createdAt:z.iso.datetime()}).strict();
+const simulation=z.object({projectCostMinor:minor,downPaymentMinor:minor,termMonths:z.number().int().min(1).max(600),annualRateBasisPoints:z.number().int().min(0).max(100_000),feesMinor:minor,financedMinor:minor,monthlyPaymentMinor:minor,totalPaymentsMinor:minor,overpaymentMinor:minor,totalCostMinor:minor}).strict();
+const financeState=z.object({version:z.literal(1),mode:z.literal('DEMO'),account:financeAccount,cards:z.array(financeCard).min(1).max(20),transactions:z.array(financeTransaction).max(2_000),plans:z.array(financePlan).max(100),milestones:z.array(milestone).max(1_000),goals:z.array(savingsGoal).max(100),lastSimulation:simulation,updatedAt:z.iso.datetime()}).strict()
+ .superRefine((value,ctx)=>{if(value.account.source!=='DEMO'||value.cards.some(card=>card.source!=='DEMO'||!card.synthetic)||value.transactions.some(transaction=>transaction.source!=='DEMO'||!transaction.synthetic))ctx.addIssue({code:'custom',message:'Stage 1 accepts only isolated synthetic DEMO data'});});
 
 export const schemas={
  empty,
@@ -39,6 +53,7 @@ export const schemas={
   inventory:z.array(z.object({id,qty:z.number().finite().min(0).max(10_000)}).strict()).max(100).optional(),
   completedStepIds:z.array(id).max(6).optional(),photoHashes:z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(10).optional()
  }).strict().refine(value=>!value.completedStepIds||new Set(value.completedStepIds).size===value.completedStepIds.length,{message:'Этапы не должны повторяться'}),
+ financeStateSave:z.object({revision:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),state:financeState}).strict(),
  calculationRef:z.object({calculationId:id}).strict(),
  reservationRef:z.object({reservationId:id}).strict(),
  projectComplete:z.object({
