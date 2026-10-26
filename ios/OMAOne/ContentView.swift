@@ -381,12 +381,13 @@ private struct Category: Identifiable {
 }
 
 private enum Tab: CaseIterable {
-    case home, catalog, cart, favorites, profile
+    case home, catalog, cart, finance, favorites, profile
     var title: String {
         switch self {
         case .home: "Главная"
         case .catalog: "Каталог"
         case .cart: "Корзина"
+        case .finance: "Финансы"
         case .favorites: "Избранное"
         case .profile: "Профиль"
         }
@@ -396,6 +397,7 @@ private enum Tab: CaseIterable {
         case .home: "square.grid.2x2"
         case .catalog: "magnifyingglass"
         case .cart: "bag"
+        case .finance: "wallet.bifold"
         case .favorites: "heart"
         case .profile: "person.crop.circle"
         }
@@ -430,6 +432,7 @@ struct ContentView: View {
                 case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
                 case .catalog: CatalogScreen(store:store, category:$category, search:$search)
                 case .cart: CartScreen(store:store, selectedTab:$tab)
+                case .finance: FinanceRootView()
                 case .favorites: FavoritesScreen(store:store, selectedTab:$tab)
                 case .profile: ProfileScreen(store:store, showONE:$showONE, showEngine:$showEngine, backendURL:$backendURL)
                 }
@@ -454,7 +457,7 @@ struct ContentView: View {
                                         .contentTransition(.numericText())
                                 }
                             }
-                            Text(item.title).font(.system(size:10,weight:tab == item ? .bold : .medium,design:.rounded)).lineLimit(1)
+                            Text(item.title).font(.system(size:9,weight:tab == item ? .bold : .medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.72)
                         }
                         .foregroundColor(tab == item ? Style.blue : Style.ink)
                         .frame(maxWidth:.infinity,minHeight:54)
@@ -469,7 +472,7 @@ struct ContentView: View {
                     .accessibilityLabel(item.title)
                 }
             }
-            .padding(.horizontal,10).padding(.top,10).padding(.bottom,5)
+            .padding(.horizontal,6).padding(.top,8).padding(.bottom,5)
             .modifier(OmaTabBarSurface())
             .shadow(color:Style.blue.opacity(0.08),radius:16,y:-4)
         }
