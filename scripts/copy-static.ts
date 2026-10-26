@@ -37,3 +37,4 @@ const browserEvidence=`// Generated from proof-engine.ts during npm run build.\n
  ` toggle(completedJSON,stepId){return JSON.stringify(toggleShelfStep(JSON.parse(completedJSON),stepId));}\n`+
  `});\n`;
 await fs.writeFile(path.join(distRoot,'public','evidence-engine.js'),browserEvidence);
+await fs.copyFile(path.join(distRoot,'finance-domain.js'),path.join(distRoot,'public','finance-domain.js'));
