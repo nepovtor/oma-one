@@ -9,56 +9,61 @@ struct TwinModelRegression {
         }
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
+        assert(TwinPlan.widthMM * TwinPlan.depthMM == 80_000_000)
+        assert(TwinPlan.interiorAreaMM2 == 80_000_000)
+        assert(TwinPlan.balconyWidthMM * TwinPlan.balconyDepthMM == 4_800_000)
+        for (index, a) in TwinPlan.spaces.enumerated() {
+            assert(a.xMM >= 0 && a.zMM >= 0)
+            assert(a.xMM + a.widthMM <= TwinPlan.widthMM)
+            assert(a.zMM + a.depthMM <= TwinPlan.depthMM)
+            for b in TwinPlan.spaces.dropFirst(index + 1) {
+                let overlapX = max(a.xMM, b.xMM) < min(a.xMM + a.widthMM, b.xMM + b.widthMM)
+                let overlapZ = max(a.zMM, b.zMM) < min(a.zMM + a.depthMM, b.zMM + b.depthMM)
+                assert(!(overlapX && overlapZ), "Rooms must not overlap")
+            }
+        }
+
         var apartment = TwinApartment.load(defaults: defaults)
-        assert(apartment.rooms.count == 2)
+        assert(apartment.rooms.count == 6)
+        assert(apartment.rooms.filter { $0.kind == .bedroom }.count == 2)
         assert(apartment.totalProgress(shelf: .none) == 0)
-        let originalID = apartment.rooms[0].id
-        assert(apartment.shelfRoomID == originalID)
-
-        apartment.mark(.walls, in: originalID, completed: true)
-        assert(apartment.progress(in: originalID, shelf: .none) == 25)
-        assert(apartment.totalProgress(shelf: .none) == 13)
-        apartment.mark(.walls, in: originalID, completed: true)
-        assert(apartment.rooms[0].finishedStages.count == 1, "No duplicate stages")
-
-        for stage in TwinStage.allCases {
-            apartment.mark(stage, in: originalID, completed: true)
-        }
-        let planned = apartment.totalProgress(shelf: .planned)
-        let reported = apartment.totalProgress(shelf: .selfReported)
-        assert(reported > planned, "Shelf must become completed only after Proof record")
-        assert(apartment.totalProgress(shelf: .photoSubmitted) == reported,
-               "Photos do not double-count or add expert status")
-
-        apartment.mark(.furniture, in: originalID, completed: false)
+        let livingID = apartment.rooms[0].id
+        assert(apartment.shelfRoomID == livingID)
+        assert(apartment.rooms[0].dimensionsLabel == "4000 × 5000 мм")
+        apartment.mark(.walls, in: livingID, completed: true)
+        apartment.mark(.walls, in: livingID, completed: true)
+        assert(apartment.rooms[0].finishedStages.count == 1)
+        assert(apartment.progress(in: livingID, shelf: .none) == 25)
+        for stage in TwinStage.allCases { apartment.mark(stage, in: livingID, completed: true) }
+        assert(apartment.totalProgress(shelf: .selfReported) > apartment.totalProgress(shelf: .planned))
+        assert(apartment.totalProgress(shelf: .photoSubmitted) == apartment.totalProgress(shelf: .selfReported))
+        apartment.mark(.furniture, in: livingID, completed: false)
         assert(!apartment.rooms[0].finishedStages.contains(.furniture))
-        apartment.updateRoom(id: originalID, kind: .living, name: "  Гостиная семьи ",
-                             width: 9.0, depth: 1.0)
-        assert(apartment.rooms[0].name == "Гостиная семьи")
-        assert(apartment.rooms[0].width == 5.8 && apartment.rooms[0].depth == 2.5,
-               "Invalid dimensions must be bounded")
-
-        assert(apartment.addRoom(kind: .bedroom))
-        assert(apartment.addRoom(kind: .bathroom))
-        assert(!apartment.addRoom(kind: .hallway), "MVP room limit is four")
+        apartment.rooms[0].referencePhotoName = "\(livingID.uuidString).jpg"
         apartment.save(defaults: defaults)
+        assert(TwinApartment.load(defaults: defaults) == apartment)
 
-        var reloaded = TwinApartment.load(defaults: defaults)
-        assert(reloaded == apartment, "User-authored rooms and marks must persist")
-        reloaded.removeRoom(id: originalID)
-        assert(reloaded.rooms.count == 3)
-        assert(reloaded.shelfRoomID != originalID, "Removing a room must rehome the shelf")
+        // A persisted dimension cannot silently change the fixed synthetic plan.
+        apartment.rooms[0].width = 100
+        apartment.save(defaults: defaults)
+        assert(TwinApartment.load(defaults: defaults).rooms[0].width == 4)
 
-        for room in Array(reloaded.rooms.dropFirst()) {
-            reloaded.removeRoom(id: room.id)
-        }
-        assert(reloaded.rooms.count == 1)
-        reloaded.removeRoom(id: reloaded.rooms[0].id)
-        assert(reloaded.rooms.count == 1, "Must preserve at least one room")
+        // Legacy v1 records remain in their original key and useful progress/photo data migrate.
+        defaults.removeObject(forKey: TwinApartment.storageKey)
+        let oldRoom = TwinRoom(kind: .living, name: "Гостиная семьи", width: 4.5, depth: 4.5,
+                               finishedStages: [.floor], referencePhotoName: "\(livingID.uuidString).jpg")
+        let legacy = TwinApartment(rooms: [oldRoom], shelfRoomID: oldRoom.id)
+        defaults.set(try! JSONEncoder().encode(legacy), forKey: "oma_home_twin_3d_v1")
+        let migrated = TwinApartment.load(defaults: defaults)
+        assert(migrated.rooms[0].name == "Гостиная семьи")
+        assert(migrated.rooms[0].width == 4 && migrated.rooms[0].depth == 5)
+        assert(migrated.rooms[0].finishedStages == [.floor])
+        assert(migrated.rooms[0].referencePhotoName == oldRoom.referencePhotoName)
+        assert(migrated.shelfRoomID == migrated.rooms[0].id)
+        assert(defaults.data(forKey: "oma_home_twin_3d_v1") != nil)
 
-        // A corrupt or incompatible payload restores a safe local starter
         defaults.set(Data("broken json".utf8), forKey: TwinApartment.storageKey)
-        assert(TwinApartment.load(defaults: defaults).rooms.count == 2)
+        assert(TwinApartment.load(defaults: defaults).rooms.count == 6)
         print("home twin model passed")
     }
 }

@@ -403,6 +403,13 @@ private enum Tab: CaseIterable {
 }
 
 struct ContentView: View {
+    private static var previewTwin: Bool {
+        #if targetEnvironment(simulator)
+        return ProcessInfo.processInfo.environment["OMA_TWIN_PREVIEW"] == "1"
+        #else
+        return false
+        #endif
+    }
     @StateObject private var store = Store()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var tabPill
@@ -467,6 +474,12 @@ struct ContentView: View {
             .shadow(color:Style.blue.opacity(0.08),radius:16,y:-4)
         }
         .preferredColorScheme(.light)
+        .onAppear {
+            if ContentView.previewTwin {
+                startTwin = true
+                showONE = true
+            }
+        }
         .tint(Style.blue)
         .buttonStyle(OmaPressButtonStyle())
         .sheet(isPresented:$showONE,onDismiss:{startPlanner=false;startShelf=false;startTwin=false}) {
@@ -582,7 +595,7 @@ private struct HomeScreen: View {
                     }.buttonStyle(OmaPressButtonStyle())
                     Button { startTwin = true; showONE = true } label: {
                         categoryRow("Моя квартира · 3D",
-                                    "Создайте план комнат и следите за ремонтом", "cube.transparent.fill")
+                                    "Типовая трёшка 80 м² · 3D и размерная схема", "cube.transparent.fill")
                     }
                     .buttonStyle(OmaPressButtonStyle())
                     .accessibilityIdentifier("homeTwin.open")
@@ -1123,7 +1136,7 @@ private struct ONEHub: View {
                             Text("OMA HOME TWIN · 3D")
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
                                 .foregroundStyle(Style.ink)
-                            Text("Настройте комнаты, наблюдайте за прогрессом")
+                            Text("Смотрите типовую трёшку и прогресс ремонта")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                         }
