@@ -292,7 +292,7 @@ struct FinanceDemoOperationView: View {
                 }.accessibilityIdentifier(topUp ? "finance.topup.submit" : "finance.transfer.submit")
             }
             if !store.notice.isEmpty { Section("Результат") { Text(store.notice) } }
-            Section { Text("Сообщение «Деньги переведены» не используется: финансовый партнёр не подключён.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+            Section { Text("Реальной банковской операции не происходит: финансовый партнёр не подключён.").font(.footnote).foregroundStyle(FinancePalette.muted) }
         }
         .navigationTitle(topUp ? "Пополнить · DEMO" : "Перевести · DEMO")
         .navigationBarTitleDisplayMode(.inline)

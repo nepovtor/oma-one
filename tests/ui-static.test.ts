@@ -33,3 +33,21 @@ test('P2 shell exposes accessible, installable and offline UI primitives',async(
  assert.match(serviceWorker,/url\.origin\s*!==\s*worker\.location\.origin/);
  for(const icon of manifest.icons.filter(icon=>icon.type==='image/png'))await fs.access(path.join(root,'public',icon.src));
 });
+
+test('PWA OMA Finance exposes six-tab navigation and isolated DEMO interactions',async()=>{
+ const [app,finance,domain,css,serviceWorker]=await Promise.all([
+  fs.readFile(path.join(root,'public/app.js'),'utf8'),
+  fs.readFile(path.join(root,'public/finance.js'),'utf8'),
+  fs.readFile(path.join(root,'finance-domain.js'),'utf8'),
+  fs.readFile(path.join(root,'public/styles.css'),'utf8'),
+  fs.readFile(path.join(root,'public/sw.js'),'utf8')
+ ]);
+ assert.ok(app.includes("['home', 'catalog', 'cart', 'finance', 'favorites', 'profile']"));
+ assert.ok(app.includes("hydrateFinanceState(await api('/finance'))"));
+ for(const label of ['Мои карты','История операций','Бюджеты проектов','План платежей','Финансирование','Финансовые цели'])assert.match(finance,new RegExp(label));
+ assert.match(finance,/Реальные деньги не используются/);
+ assert.doesNotMatch(finance,/Деньги переведены/);
+ assert.match(domain,/mode:\s*'DEMO'/);
+ assert.match(css,/grid-template-columns:\s*repeat\(6,\s*1fr\)/);
+ assert.ok(serviceWorker.includes('finance.js'));
+});

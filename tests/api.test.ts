@@ -103,6 +103,26 @@ test('P1 API: sessions, RBAC, validation, audit and atomic stock',async t=>{
  assert.equal(initial.scenarios.length,6);
  assert.equal(initial.permissions.canManageForge,false);
 
+ const initialFinance=await client.call('/finance');
+ assert.equal(initialFinance.revision,1);
+ assert.equal(initialFinance.state.mode,'DEMO');
+ assert.equal(initialFinance.state.account.source,'DEMO');
+ assert.ok(initialFinance.state.cards.every((card: {synthetic:boolean})=>card.synthetic));
+ const changedFinance=structuredClone(initialFinance.state);
+ changedFinance.goals[0].savedMinor+=5_000;
+ changedFinance.updatedAt='2026-10-26T12:00:00.000Z';
+ const savedFinance=await client.call('/finance','PUT',{revision:initialFinance.revision,state:changedFinance});
+ assert.equal(savedFinance.revision,2);
+ assert.equal(savedFinance.state.goals[0].savedMinor,changedFinance.goals[0].savedMinor);
+ const staleFinance=await client.request('/finance','PUT',{revision:initialFinance.revision,state:changedFinance});
+ assert.equal(staleFinance.response.status,409);
+ assert.equal(staleFinance.json.error.code,'FINANCE_REVISION_CONFLICT');
+ const liveFinance=structuredClone(changedFinance);
+ liveFinance.mode='LIVE';
+ const rejectedLive=await client.request('/finance','PUT',{revision:savedFinance.revision,state:liveFinance});
+ assert.equal(rejectedLive.response.status,422);
+ assert.equal(rejectedLive.json.error.code,'VALIDATION_ERROR');
+
  const shelfInput: ShelfDecisionInput={
   projectId:'shelf-contract',surface:'concrete',fastener:'concrete-anchor',shelfWeightKg:2,plannedLoadKg:5,
   wallInspected:true,verifiedWiring:true,manufacturerInstructionsChecked:true,
@@ -177,6 +197,9 @@ test('P1 API: sessions, RBAC, validation, audit and atomic stock',async t=>{
 
  const other=createClient(url);
  await other.login('demo2');
+ const otherFinance=await other.call('/finance');
+ assert.equal(otherFinance.revision,1);
+ assert.notEqual(otherFinance.state.goals[0].savedMinor,savedFinance.state.goals[0].savedMinor);
  const crossProfile=await other.request(`/projects/${projectResult.project.id}/complete`,'POST',{checklist:[true,true,true],note:'Нет доступа'});
  assert.equal(crossProfile.response.status,403);
  const shortened=await client.request(`/projects/${projectResult.project.id}/complete`,'POST',{checklist:[true],note:'Сокращённый checklist'});

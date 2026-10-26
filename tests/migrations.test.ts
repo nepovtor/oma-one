@@ -84,3 +84,23 @@ test('corrective migration preserves genuine evidence and independently verified
  assert.equal(normalized.projects[2].proof?.inspectorId,null);
  await store.close();
 });
+
+test('finance migration stores only per-user DEMO state',async t=>{
+ const database=await startPostgres();
+ t.after(()=>database.stop());
+ const store=await createStore({connectionString:database.connectionString});
+ const first=await store.readFinanceState('demo1');
+ const second=await store.readFinanceState('demo2');
+ assert.equal(first.revision,1);
+ assert.equal(first.state.mode,'DEMO');
+ assert.equal(second.state.mode,'DEMO');
+ first.state.goals[0].savedMinor+=10_000;
+ const saved=await store.saveFinanceState('demo1',first.state,first.revision,{action:'test.finance_saved',resourceType:'finance_state',resourceId:'demo1',correlationId:'test-finance',ip:'127.0.0.1'});
+ assert.equal(saved.revision,2);
+ assert.notEqual(saved.state.goals[0].savedMinor,(await store.readFinanceState('demo2')).state.goals[0].savedMinor);
+ await assert.rejects(
+  store.pool.query('INSERT INTO finance_states(user_id,payload) VALUES($1,$2::jsonb)',['live-user',JSON.stringify({mode:'LIVE'})]),
+  /finance_states_payload_check/
+ );
+ await store.close();
+});

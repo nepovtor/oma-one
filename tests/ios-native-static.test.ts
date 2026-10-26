@@ -5,11 +5,21 @@ import {readFile,readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 const root = new URL(`file://${process.cwd()}/`);
 const read = (name: string) => readFile(new URL(name,root),'utf8');
-test('native iOS shell includes five original OMA sections and eight OMA ONE modules',async()=>{
+test('native iOS shell includes six OMA sections and eight OMA ONE modules',async()=>{
  const src=await read('ios/OMAOne/ContentView.swift');
- for(const tab of ['home','catalog','cart','favorites','profile'])assert.match(src,new RegExp(`\\.${tab}\\b`));
+ for(const tab of ['home','catalog','cart','finance','favorites','profile'])assert.ok(src.includes(`.${tab}`),tab);
  for(const feature of ['zerobuy','antifail','domino','synccity','proof','dna','forge','pulse'])assert.match(src,new RegExp(`case \\.${feature}`));
  for(const screen of ['HomeScreen','CatalogScreen','CartScreen','FavoritesScreen','ProfileScreen','ONEHub','PlannerScreen','FeatureScreen'])assert.ok(src.includes(`struct ${screen}`),screen);
+});
+test('native OMA Finance is an explicit synthetic demo with persistent interactive screens',async()=>{
+ const [view,models]=await Promise.all([read('ios/OMAOne/FinanceView.swift'),read('ios/OMAOne/FinanceModels.swift')]);
+ for(const screen of ['FinanceRootView','FinanceDashboardView','FinanceCardsView','FinanceHistoryView','FinancePlansView','FinanceMilestonesView','FinanceSimulationView','FinanceGoalsView'])assert.match(view,new RegExp(`struct ${screen}`),screen);
+ assert.match(view,/не принимают и не хранят реальные деньги/);
+ assert.doesNotMatch(view,/Деньги переведены/);
+ assert.match(models,/UserDefaults/);
+ assert.match(models,/Реальные деньги не перемещались/);
+ assert.ok(models.includes('source: .demo'));
+ assert.doesNotMatch(view+models,/\b(?:PAN|CVV|CVC|PIN)\b/);
 });
 test('native feedback is visual, confirms cart additions, and has no haptics',async()=>{
  const src=await read('ios/OMAOne/ContentView.swift');
