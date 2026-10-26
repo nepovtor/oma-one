@@ -89,10 +89,10 @@ private struct FinanceDashboardView: View {
 
     private var quickActions: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-            NavigationLink { FinancePlaceholder(title: "Мои карты", message: "Управление синтетическими картами") } label: { FinanceAction(icon: "creditcard", title: "Карты") }
-            NavigationLink { FinancePlaceholder(title: "Демо-перевод", message: "Реальные деньги не перемещаются") } label: { FinanceAction(icon: "arrow.left.arrow.right", title: "Перевести") }
-            NavigationLink { FinancePlaceholder(title: "Демо-пополнение", message: "Будет добавлена только синтетическая операция") } label: { FinanceAction(icon: "plus", title: "Пополнить") }
-            NavigationLink { FinancePlaceholder(title: "История", message: "Операции из источника DEMO") } label: { FinanceAction(icon: "clock.arrow.circlepath", title: "История") }
+            NavigationLink { FinanceCardsView(store: store) } label: { FinanceAction(icon: "creditcard", title: "Карты") }
+            NavigationLink { FinanceDemoOperationView(store: store, topUp: false) } label: { FinanceAction(icon: "arrow.left.arrow.right", title: "Перевести") }
+            NavigationLink { FinanceDemoOperationView(store: store, topUp: true) } label: { FinanceAction(icon: "plus", title: "Пополнить") }
+            NavigationLink { FinanceHistoryView(store: store) } label: { FinanceAction(icon: "clock.arrow.circlepath", title: "История") }
         }
     }
 
@@ -113,7 +113,7 @@ private struct FinanceDashboardView: View {
 
     private var recentTransactions: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack { Text("Последние операции").font(.headline); Spacer(); NavigationLink("Все") { FinancePlaceholder(title: "История", message: "Фильтры и статусы операций") }.font(.subheadline.weight(.semibold)) }
+            HStack { Text("Последние операции").font(.headline); Spacer(); NavigationLink("Все") { FinanceHistoryView(store: store) }.font(.subheadline.weight(.semibold)) }
             ForEach(store.state.transactions.prefix(3)) { item in
                 HStack(spacing: 12) {
                     Image(systemName: item.kind == .homeProject ? "house" : "cart").frame(width: 28).foregroundStyle(FinancePalette.muted)
@@ -146,7 +146,144 @@ private struct FinanceAction: View {
     }
 }
 
-private struct FinancePlaceholder: View {
+struct FinanceCardsView: View {
+    @ObservedObject var store: FinanceStore
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(store.state.cards) { card in
+                    NavigationLink {
+                        FinanceCardSettingsView(store: store, cardID: card.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack { Text(card.name).font(.headline); Spacer(); Text(card.status.rawValue).font(.caption.weight(.semibold)) }
+                            Text(card.maskedPAN).font(.title3.weight(.semibold)).monospacedDigit()
+                            Text("\(card.kind) · \(card.source.rawValue) · сеть не указана")
+                                .font(.caption).foregroundStyle(FinancePalette.muted)
+                            Text("Синтетическая карта — не для настоящих покупок")
+                                .font(.caption).foregroundStyle(FinancePalette.muted)
+                        }.padding(.vertical, 8)
+                    }
+                }
+            } header: { Text("Тестовые карты") }
+            Section {
+                Button("Создать демо-виртуальную карту") { store.requestVirtualCard() }
+                    .accessibilityIdentifier("finance.card.request")
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Физическая карта").font(.headline)
+                    Text("Функция готовится к подключению. Адрес и паспортные сведения не запрашиваются.").font(.subheadline).foregroundStyle(FinancePalette.muted)
+                }.padding(.vertical, 6)
+            }
+            if !store.notice.isEmpty { Section { Text(store.notice).font(.footnote) } }
+        }
+        .navigationTitle("Мои карты")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("finance.cards")
+    }
+}
+
+struct FinanceCardSettingsView: View {
+    @ObservedObject var store: FinanceStore
+    let cardID: String
+    private var card: FinanceCard? { store.state.cards.first(where: { $0.id == cardID }) }
+
+    var body: some View {
+        Form {
+            if let card {
+                Section("Статус") {
+                    LabeledContent("Карта", value: card.maskedPAN)
+                    Toggle("Заблокировать в DEMO", isOn: Binding(get: { card.status == .blocked }, set: { store.setCardBlocked(cardID, blocked: $0) }))
+                }
+                Section("Лимиты и каналы") {
+                    Toggle("Покупки в интернете", isOn: Binding(get: { card.controls.online }, set: { store.updateControls(cardID, online: $0) }))
+                    Toggle("Бесконтактные операции", isOn: Binding(get: { card.controls.contactless }, set: { store.updateControls(cardID, contactless: $0) }))
+                    Toggle("Снятие наличных", isOn: Binding(get: { card.controls.cashWithdrawal }, set: { store.updateControls(cardID, cashWithdrawal: $0) }))
+                    Stepper("Месячный демо-лимит: \(financeMoney(card.controls.monthlyLimitMinor))", value: Binding(get: { card.controls.monthlyLimitMinor }, set: { store.updateControls(cardID, monthlyLimitMinor: $0) }), in: 0...5_000_000, step: 10_000)
+                }
+                Section { Text("Сеть, география, NFC и системный кошелёк определяются только будущим лицензированным эмитентом.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+            } else { Text("Карта не найдена") }
+        }.navigationTitle("Настройки карты").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct FinanceHistoryView: View {
+    @ObservedObject var store: FinanceStore
+    @State private var filter: FinanceTransactionKind?
+    private var rows: [FinanceTransaction] { filter.map { kind in store.state.transactions.filter { $0.kind == kind } } ?? store.state.transactions }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    filterButton("Все", value: nil)
+                    filterButton("Покупки", value: .purchase)
+                    filterButton("Переводы", value: .transfer)
+                    filterButton("Услуги", value: .service)
+                    filterButton("Возвраты", value: .refund)
+                    filterButton("Проекты", value: .homeProject)
+                }.padding(.horizontal, 16).padding(.vertical, 10)
+            }
+            if rows.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "tray").font(.system(size: 32)).foregroundStyle(FinancePalette.muted)
+                    Text("Нет демо-операций").font(.headline)
+                    Text("Измени фильтр или добавь синтетическую операцию.").font(.subheadline).foregroundStyle(FinancePalette.muted)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(30)
+            } else {
+                List(rows) { item in
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(alignment: .firstTextBaseline) { Text(item.counterparty).font(.subheadline.weight(.semibold)); Spacer(); Text((item.direction == "CREDIT" ? "+" : "−") + financeMoney(item.amountMinor)).font(.subheadline.weight(.semibold)).monospacedDigit() }
+                        HStack { Text(item.category); Spacer(); Text(item.occurredAt.formatted(date: .abbreviated, time: .shortened)) }.font(.caption).foregroundStyle(FinancePalette.muted)
+                        HStack { Text(item.status.rawValue); Spacer(); Text("ID: \(item.providerTransactionID.prefix(18))…") }.font(.caption2).foregroundStyle(FinancePalette.muted)
+                        Text("Источник: \(item.source.rawValue) · синтетический пример").font(.caption2).foregroundStyle(FinancePalette.muted)
+                    }.padding(.vertical, 5)
+                }.listStyle(.plain)
+            }
+        }
+        .navigationTitle("История операций")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("finance.history")
+    }
+
+    private func filterButton(_ title: String, value: FinanceTransactionKind?) -> some View {
+        Button(title) { filter = value }
+            .font(.subheadline.weight(filter == value ? .semibold : .regular))
+            .padding(.horizontal, 13).frame(height: 36)
+            .background(filter == value ? FinancePalette.ink : Color.white, in: Capsule())
+            .foregroundStyle(filter == value ? Color.white : FinancePalette.ink)
+    }
+}
+
+struct FinanceDemoOperationView: View {
+    @ObservedObject var store: FinanceStore
+    let topUp: Bool
+    @State private var amount = ""
+    @State private var counterparty = ""
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Это безопасная симуляция Stage 1. Она меняет только синтетический баланс и DEMO-журнал.")
+                    .font(.subheadline).foregroundStyle(FinancePalette.muted)
+            }
+            Section(topUp ? "Демо-пополнение" : "Демо-перевод") {
+                TextField("Сумма в BYN", text: $amount).keyboardType(.decimalPad)
+                TextField(topUp ? "Источник (тестовый)" : "Получатель (тестовый)", text: $counterparty)
+                Button(topUp ? "Добавить синтетическое пополнение" : "Добавить синтетический перевод") {
+                    _ = store.demoOperation(amountText: amount, counterparty: counterparty, topUp: topUp)
+                    if store.notice.contains("добавлена") { amount = ""; counterparty = "" }
+                }.accessibilityIdentifier(topUp ? "finance.topup.submit" : "finance.transfer.submit")
+            }
+            if !store.notice.isEmpty { Section("Результат") { Text(store.notice) } }
+            Section { Text("Сообщение «Деньги переведены» не используется: финансовый партнёр не подключён.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+        }
+        .navigationTitle(topUp ? "Пополнить · DEMO" : "Перевести · DEMO")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct FinancePlaceholder: View {
     let title: String
     let message: String
     var body: some View {

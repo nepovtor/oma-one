@@ -93,6 +93,49 @@ struct FinanceLocalState: Codable {
         guard state.mode == .demo, let data = try? JSONEncoder().encode(state) else { return }
         UserDefaults.standard.set(data, forKey: Self.storageKey)
     }
+
+    func setCardBlocked(_ cardID: String, blocked: Bool) {
+        guard let index = state.cards.firstIndex(where: { $0.id == cardID }) else { return }
+        state.cards[index].status = blocked ? .blocked : .active
+        state.updatedAt = Date()
+        notice = blocked ? "Синтетическая карта заблокирована только в DEMO" : "Синтетическая карта разблокирована только в DEMO"
+    }
+
+    func updateControls(_ cardID: String, online: Bool? = nil, contactless: Bool? = nil, cashWithdrawal: Bool? = nil, monthlyLimitMinor: Int? = nil) {
+        guard let index = state.cards.firstIndex(where: { $0.id == cardID }) else { return }
+        if let online { state.cards[index].controls.online = online }
+        if let contactless { state.cards[index].controls.contactless = contactless }
+        if let cashWithdrawal { state.cards[index].controls.cashWithdrawal = cashWithdrawal }
+        if let monthlyLimitMinor { state.cards[index].controls.monthlyLimitMinor = max(0, monthlyLimitMinor) }
+        state.updatedAt = Date()
+        notice = "Настройки сохранены в изолированном DEMO"
+    }
+
+    func requestVirtualCard() {
+        let suffix = String(format: "%04d", Int.random(in: 0...9999))
+        let id = "demo-card-\(UUID().uuidString.lowercased())"
+        state.cards.append(FinanceCard(id: id, providerCardID: "demo-token-\(UUID().uuidString.lowercased())", accountID: state.account.id, name: "OMA Finance Virtual", maskedPAN: "•••• \(suffix)", status: .active, kind: "VIRTUAL", network: nil, controls: FinanceCardControls(online: true, contactless: false, cashWithdrawal: false, monthlyLimitMinor: 150_000), source: .demo, synthetic: true))
+        state.updatedAt = Date()
+        notice = "Создана тестовая запись карты. Она не работает для настоящих покупок."
+    }
+
+    func demoOperation(amountText: String, counterparty: String, topUp: Bool) -> Bool {
+        let normalized = amountText.replacingOccurrences(of: ",", with: ".")
+        guard let decimal = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")), decimal > 0 else {
+            notice = "Введите корректную сумму"
+            return false
+        }
+        let minor = NSDecimalNumber(decimal: decimal * 100).intValue
+        guard minor >= 100 else { notice = "Минимальная демо-сумма — 1 BYN"; return false }
+        guard topUp || minor <= state.account.availableMinor else { notice = "Недостаточно синтетического остатка"; return false }
+        let direction = topUp ? "CREDIT" : "DEBIT"
+        state.account.balanceMinor += topUp ? minor : -minor
+        state.account.availableMinor += topUp ? minor : -minor
+        state.transactions.insert(FinanceTransaction(id: "demo-\(UUID().uuidString.lowercased())", providerTransactionID: "demo-local-\(UUID().uuidString.lowercased())", accountID: state.account.id, occurredAt: Date(), amountMinor: minor, direction: direction, kind: topUp ? .topUp : .transfer, category: topUp ? "Пополнение" : "Переводы", counterparty: counterparty.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? (topUp ? "Демо-пополнение" : "Демо-получатель") : String(counterparty.prefix(80)), status: .settled, source: .demo, projectID: nil, synthetic: true), at: 0)
+        state.updatedAt = Date()
+        notice = "Синтетическая операция добавлена. Реальные деньги не перемещались."
+        return true
+    }
 }
 
 func financeMoney(_ minor: Int) -> String {
