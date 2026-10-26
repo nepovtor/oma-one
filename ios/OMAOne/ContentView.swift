@@ -432,7 +432,7 @@ struct ContentView: View {
                 case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
                 case .catalog: CatalogScreen(store:store, category:$category, search:$search)
                 case .cart: CartScreen(store:store, selectedTab:$tab)
-                case .finance: FinanceRootView()
+                case .finance: FinanceRootView(cartMaterialMinor: Int((store.cartTotal * 100).rounded()))
                 case .favorites: FavoritesScreen(store:store, selectedTab:$tab)
                 case .profile: ProfileScreen(store:store, showONE:$showONE, showEngine:$showEngine, backendURL:$backendURL)
                 }
@@ -924,6 +924,9 @@ private struct CartScreen: View {
                 VStack(spacing:12) {
                     HStack {Text("Итого").font(.system(size:16));Spacer();Text(rub(store.cartTotal)).font(.system(size:22,weight:.bold,design:.rounded)).contentTransition(.numericText())}
                     Text("Демо-заказ · оплата и доставка не выполняются").font(.system(size:12)).foregroundColor(.secondary)
+                    Button("Спланировать расходы в Финансах") { selectedTab = .finance }
+                        .font(.system(size:14,weight:.semibold)).foregroundStyle(Style.blue)
+                        .frame(maxWidth:.infinity,minHeight:44)
                     Button {confirm=true} label:{ Text("Оформить демо-заказ").font(.system(size:16,weight:.semibold)).frame(maxWidth:.infinity).frame(height:50).background(Style.blue,in:RoundedRectangle(cornerRadius:14)).foregroundColor(.white) }
                 }.padding(18).background(.white)
                 .alert("Подтвердить демо-заказ?",isPresented:$confirm) {
@@ -1160,6 +1163,19 @@ private struct ONEHub: View {
                         Image(systemName:"arrow.right").font(.system(size:15,weight:.semibold)).frame(width:44,height:44)
                     }.accessibilityLabel("Открыть мои проекты")
                 }.padding(.horizontal,16).padding(.vertical,10).modifier(OmaCardSurface(radius:20))
+                Button {
+                    showONE = false
+                    selectedTab = .finance
+                } label: {
+                    HStack(spacing:14) {
+                        Image(systemName:"wallet.bifold").font(.system(size:24)).frame(width:32)
+                        VStack(alignment:.leading,spacing:3) {
+                            Text("OMA Finance").font(.system(size:16,weight:.semibold))
+                            Text("Бюджеты проектов и синтетический банкинг").font(.system(size:12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(); Image(systemName:"arrow.right")
+                    }.foregroundStyle(Style.ink).padding(16).modifier(OmaCardSurface(radius:20))
+                }.buttonStyle(OmaPressButtonStyle()).accessibilityIdentifier("finance.fromHub")
                 Text("Технологии проекта").font(.system(size:19,weight:.bold,design:.rounded)).foregroundColor(Style.ink)
                 OmaGlassGroup {
                     LazyVStack(spacing:10) {
@@ -1357,6 +1373,13 @@ private struct ProjectsScreen: View {
     @Binding var selectedTab:Tab
     var body: some View {
         List {
+            Button {
+                showONE = false
+                selectedTab = .finance
+            } label: {
+                Label("Открыть финансовый план проектов", systemImage:"wallet.bifold")
+                    .foregroundStyle(Style.blue).font(.system(size:16,weight:.semibold))
+            }.accessibilityIdentifier("finance.fromProjects")
             NavigationLink {
                 HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
             } label: {

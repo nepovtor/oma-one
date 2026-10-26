@@ -11,12 +11,14 @@ enum FinancePalette {
 
 struct FinanceRootView: View {
     @StateObject private var finance = FinanceStore()
+    let cartMaterialMinor: Int
 
     var body: some View {
         NavigationStack {
             FinanceDashboardView(store: finance)
         }
         .tint(FinancePalette.navy)
+        .onAppear { finance.syncMaterialsFromCart(cartMaterialMinor) }
     }
 }
 
@@ -103,9 +105,9 @@ private struct FinanceDashboardView: View {
             Text(financeMoney(15_300)).font(.title2.weight(.bold))
             ProgressView(value: 39_700, total: 55_000).tint(FinancePalette.blue)
             HStack {
-                NavigationLink("Открыть бюджет") { FinancePlaceholder(title: "Бюджет проекта", message: "Материалы, услуги, доставка и резерв") }
+                NavigationLink("Открыть бюджет") { FinancePlansView(store: store) }
                 Spacer()
-                NavigationLink("План платежей") { FinancePlaceholder(title: "План платежей", message: "Этапы ремонта и ручные отметки") }
+                NavigationLink("План платежей") { FinanceMilestonesView(store: store) }
             }.font(.subheadline.weight(.semibold))
         }
         .padding(18).background(.white, in: RoundedRectangle(cornerRadius: 16))
@@ -280,6 +282,83 @@ struct FinanceDemoOperationView: View {
         }
         .navigationTitle(topUp ? "Пополнить · DEMO" : "Перевести · DEMO")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct FinancePlansView: View {
+    @ObservedObject var store: FinanceStore
+    var body: some View {
+        List {
+            ForEach(store.state.plans) { plan in
+                NavigationLink { FinancePlanDetailView(store: store, planID: plan.id) } label: {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(plan.projectTitle).font(.headline)
+                        HStack { Text("Смета \(financeMoney(plan.actualMinor))"); Spacer(); Text(plan.overrunMinor > 0 ? "Превышение \(financeMoney(plan.overrunMinor))" : "Остаток \(financeMoney(plan.remainingMinor))") }
+                            .font(.caption).foregroundStyle(plan.overrunMinor > 0 ? Color.red : FinancePalette.muted)
+                        ProgressView(value: Double(min(plan.actualMinor, max(1, plan.budgetMinor))), total: Double(max(1, plan.budgetMinor))).tint(plan.overrunMinor > 0 ? .red : FinancePalette.blue)
+                    }.padding(.vertical, 6)
+                }
+            }
+            Section { Button("Создать бюджет") { store.addPlan() } }
+            if !store.notice.isEmpty { Section { Text(store.notice).font(.footnote) } }
+        }.navigationTitle("Бюджеты проектов").navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("finance.budgets")
+    }
+}
+
+struct FinancePlanDetailView: View {
+    @ObservedObject var store: FinanceStore
+    let planID: String
+    private var plan: FinancePlan? { store.state.plans.first(where: { $0.id == planID }) }
+    var body: some View {
+        Form {
+            if let plan {
+                Section("Лимит проекта") {
+                    Stepper(financeMoney(plan.budgetMinor), value: Binding(get: { plan.budgetMinor }, set: { store.updatePlanBudget(planID: planID, budgetMinor: $0) }), in: 0...10_000_000, step: 5_000)
+                    LabeledContent("Предварительная смета", value: financeMoney(plan.estimatedMinor))
+                    LabeledContent("Фактические/текущие расходы", value: financeMoney(plan.actualMinor))
+                    LabeledContent(plan.overrunMinor > 0 ? "Превышение" : "Остаток", value: financeMoney(plan.overrunMinor > 0 ? plan.overrunMinor : plan.remainingMinor)).foregroundStyle(plan.overrunMinor > 0 ? Color.red : FinancePalette.ink)
+                }
+                ForEach(plan.lines) { line in
+                    Section(line.kind.rawValue) {
+                        Stepper("Оценка: \(financeMoney(line.estimatedMinor))", value: Binding(get: { line.estimatedMinor }, set: { store.updatePlanLine(planID: planID, lineID: line.id, estimatedMinor: $0) }), in: 0...5_000_000, step: 1_000)
+                        if let actual = line.actualMinor {
+                            Stepper("Факт: \(financeMoney(actual))", value: Binding(get: { actual }, set: { store.updatePlanLine(planID: planID, lineID: line.id, actualMinor: $0) }), in: 0...5_000_000, step: 1_000)
+                            Button("Вернуть предварительную оценку") { store.updatePlanLine(planID: planID, lineID: line.id, clearActual: true) }
+                        } else {
+                            Button("Указать фактический расход") { store.updatePlanLine(planID: planID, lineID: line.id, actualMinor: line.estimatedMinor) }
+                        }
+                        Text(line.source).font(.caption).foregroundStyle(FinancePalette.muted)
+                    }
+                }
+                Section { Text("Цены и расчёты демонстрационные. Материалы из корзины уже учитывают ZeroBuy и не вычитаются повторно.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+            }
+        }.navigationTitle(plan?.projectTitle ?? "Бюджет").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct FinanceMilestonesView: View {
+    @ObservedObject var store: FinanceStore
+    private var errors: [String] { store.milestoneOrderErrors(projectID: "shelf-local") }
+    var body: some View {
+        List {
+            if !errors.isEmpty { Section("Domino") { ForEach(errors, id: \.self) { Text($0).foregroundStyle(.red) } } }
+            Section("Повесить полку") {
+                ForEach(store.state.milestones.filter { $0.projectID == "shelf-local" }) { item in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack { Text(item.title).font(.headline); Spacer(); Text(financeMoney(item.amountMinor)).font(.subheadline.weight(.semibold)).monospacedDigit() }
+                        Text("\(item.stage) · \(item.date.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(FinancePalette.muted)
+                        Text(item.note).font(.caption).foregroundStyle(FinancePalette.muted)
+                        Picker("Статус", selection: Binding(get: { item.status }, set: { store.setMilestoneStatus(item.id, status: $0) })) {
+                            Text("Запланирован").tag(FinanceMilestoneStatus.planned)
+                            Text("Оплачен вручную").tag(FinanceMilestoneStatus.manuallyPaid)
+                            Text("Отменён").tag(FinanceMilestoneStatus.cancelled)
+                        }.pickerStyle(.menu)
+                    }.padding(.vertical, 6)
+                }
+            }
+            Section { Text("MANUALLY_PAID — отметка пользователя, а не банковская транзакция. Proof не инициирует перевод мастеру.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+            if !store.notice.isEmpty { Section { Text(store.notice).font(.footnote) } }
+        }.navigationTitle("План платежей").navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("finance.milestones")
     }
 }
 

@@ -51,12 +51,48 @@ struct FinanceTransaction: Codable, Identifiable {
     var synthetic: Bool
 }
 
+enum FinanceBudgetKind: String, Codable, CaseIterable { case materials = "Материалы ОМА", services = "Услуги мастеров", delivery = "Доставка", extra = "Дополнительные расходы", reserve = "Резерв" }
+struct FinanceBudgetLine: Codable, Identifiable {
+    var id: String
+    var kind: FinanceBudgetKind
+    var estimatedMinor: Int
+    var actualMinor: Int?
+    var source: String
+}
+struct FinancePlan: Codable, Identifiable {
+    var id: String
+    var projectID: String
+    var projectTitle: String
+    var budgetMinor: Int
+    var lines: [FinanceBudgetLine]
+    var updatedAt: Date
+    var estimatedMinor: Int { lines.reduce(0) { $0 + max(0, $1.estimatedMinor) } }
+    var actualMinor: Int { lines.reduce(0) { $0 + max(0, $1.actualMinor ?? $1.estimatedMinor) } }
+    var remainingMinor: Int { max(0, budgetMinor - actualMinor) }
+    var overrunMinor: Int { max(0, actualMinor - budgetMinor) }
+}
+enum FinanceMilestoneStatus: String, Codable { case planned = "PLANNED", manuallyPaid = "MANUALLY_PAID", cancelled = "CANCELLED" }
+struct FinanceMilestone: Codable, Identifiable {
+    var id: String
+    var projectID: String
+    var title: String
+    var amountMinor: Int
+    var date: Date
+    var stage: String
+    var dependsOn: [String]
+    var status: FinanceMilestoneStatus
+    var note: String
+    var linkedTransactionID: String?
+}
+
 struct FinanceLocalState: Codable {
     var version = 1
     var mode: FinanceMode
     var account: FinanceAccount
     var cards: [FinanceCard]
     var transactions: [FinanceTransaction]
+    var plans: [FinancePlan]
+    var milestones: [FinanceMilestone]
     var updatedAt: Date
 
     static func demo() -> FinanceLocalState {
@@ -67,11 +103,28 @@ struct FinanceLocalState: Codable {
         func transaction(_ id: String, days: Int, amount: Int, direction: String, kind: FinanceTransactionKind, category: String, counterparty: String, status: FinanceTransactionStatus = .settled, projectID: String? = nil) -> FinanceTransaction {
             FinanceTransaction(id: id, providerTransactionID: "demo-partner-\(id)", accountID: account.id, occurredAt: calendar.date(byAdding: .day, value: days, to: now) ?? now, amountMinor: amount, direction: direction, kind: kind, category: category, counterparty: counterparty, status: status, source: .demo, projectID: projectID, synthetic: true)
         }
+        let shelfPlan = FinancePlan(id: "plan-shelf", projectID: "shelf-local", projectTitle: "Повесить полку", budgetMinor: 55_000, lines: [
+            FinanceBudgetLine(id: "shelf-materials", kind: .materials, estimatedMinor: 11_200, actualMinor: nil, source: "ZeroBuy применён"),
+            FinanceBudgetLine(id: "shelf-services", kind: .services, estimatedMinor: 18_000, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "shelf-delivery", kind: .delivery, estimatedMinor: 2_500, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "shelf-extra", kind: .extra, estimatedMinor: 3_000, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "shelf-reserve", kind: .reserve, estimatedMinor: 5_000, actualMinor: nil, source: "Ручная оценка")
+        ], updatedAt: now)
+        let bathroomPlan = FinancePlan(id: "plan-bathroom", projectID: "bathroom-demo", projectTitle: "Обновление ванной · синтетический пример", budgetMinor: 800_000, lines: [
+            FinanceBudgetLine(id: "bath-materials", kind: .materials, estimatedMinor: 360_000, actualMinor: nil, source: "Предварительная демо-смета"),
+            FinanceBudgetLine(id: "bath-services", kind: .services, estimatedMinor: 260_000, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "bath-delivery", kind: .delivery, estimatedMinor: 22_000, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "bath-extra", kind: .extra, estimatedMinor: 38_000, actualMinor: nil, source: "Ручная оценка"),
+            FinanceBudgetLine(id: "bath-reserve", kind: .reserve, estimatedMinor: 80_000, actualMinor: nil, source: "Ручная оценка")
+        ], updatedAt: now)
         return FinanceLocalState(mode: .demo, account: account, cards: [card], transactions: [
             transaction("tx-1", days: -1, amount: 8_950, direction: "DEBIT", kind: .purchase, category: "Кафе", counterparty: "Кофейня у парка · синтетический пример"),
             transaction("tx-2", days: -2, amount: 3_400, direction: "DEBIT", kind: .purchase, category: "Транспорт", counterparty: "Городской транспорт · синтетический пример", status: .authorized),
             transaction("tx-3", days: -3, amount: 28_600, direction: "DEBIT", kind: .homeProject, category: "Материалы", counterparty: "Материалы для полки · демо", projectID: "shelf-local"),
             transaction("tx-4", days: -4, amount: 150_000, direction: "CREDIT", kind: .topUp, category: "Пополнение", counterparty: "Демо-пополнение")
+        ], plans: [shelfPlan, bathroomPlan], milestones: [
+            FinanceMilestone(id: "ms-materials", projectID: "shelf-local", title: "Купить материалы", amountMinor: 11_200, date: calendar.date(byAdding: .day, value: 7, to: now) ?? now, stage: "Подготовка", dependsOn: [], status: .planned, note: "Сумма после ZeroBuy", linkedTransactionID: nil),
+            FinanceMilestone(id: "ms-install", projectID: "shelf-local", title: "Монтаж полки", amountMinor: 18_000, date: calendar.date(byAdding: .day, value: 10, to: now) ?? now, stage: "Монтаж", dependsOn: ["ms-materials"], status: .planned, note: "Ручная стоимость мастера", linkedTransactionID: nil)
         ], updatedAt: now)
     }
 }
@@ -135,6 +188,51 @@ struct FinanceLocalState: Codable {
         state.updatedAt = Date()
         notice = "Синтетическая операция добавлена. Реальные деньги не перемещались."
         return true
+    }
+
+    func syncMaterialsFromCart(_ cartMinor: Int) {
+        guard cartMinor > 0, let planIndex = state.plans.firstIndex(where: { $0.projectID == "shelf-local" }), let lineIndex = state.plans[planIndex].lines.firstIndex(where: { $0.kind == .materials }) else { return }
+        state.plans[planIndex].lines[lineIndex].estimatedMinor = cartMinor
+        state.plans[planIndex].lines[lineIndex].source = "Корзина после ZeroBuy — повторно не вычитается"
+        state.plans[planIndex].updatedAt = Date(); state.updatedAt = Date()
+    }
+
+    func updatePlanLine(planID: String, lineID: String, estimatedMinor: Int? = nil, actualMinor: Int? = nil, clearActual: Bool = false) {
+        guard let planIndex = state.plans.firstIndex(where: { $0.id == planID }), let lineIndex = state.plans[planIndex].lines.firstIndex(where: { $0.id == lineID }) else { return }
+        if let estimatedMinor { state.plans[planIndex].lines[lineIndex].estimatedMinor = max(0, estimatedMinor) }
+        if clearActual { state.plans[planIndex].lines[lineIndex].actualMinor = nil }
+        else if let actualMinor { state.plans[planIndex].lines[lineIndex].actualMinor = max(0, actualMinor) }
+        state.plans[planIndex].updatedAt = Date(); state.updatedAt = Date(); notice = "Бюджет сохранён локально"
+    }
+
+    func updatePlanBudget(planID: String, budgetMinor: Int) {
+        guard let index = state.plans.firstIndex(where: { $0.id == planID }) else { return }
+        state.plans[index].budgetMinor = max(0, budgetMinor); state.plans[index].updatedAt = Date(); state.updatedAt = Date()
+    }
+
+    func addPlan() {
+        let id = UUID().uuidString.lowercased()
+        state.plans.append(FinancePlan(id: "plan-\(id)", projectID: "local-\(id)", projectTitle: "Новый домашний проект", budgetMinor: 100_000, lines: FinanceBudgetKind.allCases.enumerated().map { index, kind in FinanceBudgetLine(id: "line-\(id)-\(index)", kind: kind, estimatedMinor: 0, actualMinor: nil, source: "Ручная оценка") }, updatedAt: Date()))
+        state.updatedAt = Date(); notice = "Новый бюджет создан"
+    }
+
+    func setMilestoneStatus(_ id: String, status: FinanceMilestoneStatus) {
+        guard let index = state.milestones.firstIndex(where: { $0.id == id }) else { return }
+        state.milestones[index].status = status; state.updatedAt = Date()
+        notice = status == .manuallyPaid ? "Отмечено вручную. Банковская операция не создавалась." : "Статус этапа обновлён"
+    }
+
+    func milestoneOrderErrors(projectID: String) -> [String] {
+        let rows = state.milestones.filter { $0.projectID == projectID }
+        let ids = Set(rows.map(\.id)); var errors: [String] = []
+        for row in rows { for dependency in row.dependsOn where !ids.contains(dependency) { errors.append("Для \(row.title) отсутствует зависимость \(dependency)") } }
+        func reaches(_ current: String, target: String, visited: inout Set<String>) -> Bool {
+            guard visited.insert(current).inserted, let row = rows.first(where: { $0.id == current }) else { return false }
+            if row.dependsOn.contains(target) { return true }
+            return row.dependsOn.contains { reaches($0, target: target, visited: &visited) }
+        }
+        for row in rows { var visited = Set<String>(); if reaches(row.id, target: row.id, visited: &visited) { errors.append("Обнаружен цикл этапов") } }
+        return Array(Set(errors))
     }
 }
 
