@@ -2,6 +2,8 @@
 
 **Нативная SwiftUI-версия и PWA** используют общий пользовательский путь «задача → проверка → корзина → результат». В веб-версии сценарий «Повесить полку» повторяет актуальную логику iOS, сохраняет черновик и Proof-фото локально и после первого успешного запуска продолжает работать без сервера. Все восемь интерактивных демо-модулей OMA ONE сохранены. Подробности iOS: [IOS_README.md](IOS_README.md). Приложение не является официальным продуктом ОМА.
 
+**OMA Finance Stage 1** добавляет шестую вкладку с синтетическим банковским кабинетом, бюджетами проектов, планом расходов, калькулятором и целями. Реальные деньги и банковский партнёр не подключены; подробности и roadmap: [docs/OMA_FINANCE_STAGE1.md](docs/OMA_FINANCE_STAGE1.md).
+
 > **Экспериментальная ветка HOME TWIN 3D:** `feature/oma-home-twin-3d`. Добавлена реальная нативная SceneKit-модель пользовательской квартиры с локальным прогрессом ремонта и интеграцией с Proof полки. См. [инструкцию](docs/HOME_TWIN_3D.md). Этот функционал не меняет текущий `main` до отдельного слияния.
 
 ---
@@ -32,7 +34,7 @@ npm run typecheck  # строгая проверка Node и браузерно�
 npm run build      # компиляция TypeScript и копирование статических файлов в dist/
 npm run dev        # сборка, watch-компиляция и перезапуск Node-сервера
 npm test           # unit + интеграционный тест на изолированном PostgreSQL
-npm run test:e2e   # Chromium: 9 расчётов Evidence Lab и мобильная ширина 390 px
+npm run test:e2e   # Chromium: Evidence Lab + OMA Finance на ширине 320/375/390 px
 npm run migrate
 npm run reset  # восстановить seed и завершить активные сессии
 npm run db:down
@@ -57,7 +59,8 @@ npm run db:down
 
 ## Что реализовано в P2 — интерфейс
 
-- Сохранена знакомая навигация магазина: «Главная / Каталог / Корзина / Избранное / Профиль», OMA ONE выделен внутри того же интерфейса.
+- Сохранена знакомая навигация магазина и добавлен подбренд: «Главная / Каталог / Корзина / Финансы / Избранное / Профиль».
+- OMA Finance работает как изолированный Stage 1: синтетические счёт, карты и операции, бюджеты жилья, платежные этапы, калькулятор и цели; PWA-состояние владельца сохраняется в PostgreSQL.
 - Перенесён полный локальный сценарий iOS «Повесить полку»: материал стены и нагрузка меняют AntiFail, ZeroBuy и состав корзины; Domino блокирует нарушенную последовательность; Proof отделяет самостоятельную отметку от проверки специалистом.
 - Черновик полки, локальная корзина, избранное и сжатое Proof-фото хранятся только в браузере; изменение исходных параметров пересчитывает и очищает небезопасную корзину.
 - 28 демонстрационных изображений товаров из iOS подготовлены для веба и кэшируются service worker вместе с TypeScript-модулями.
@@ -92,13 +95,13 @@ OMA_SECURE_COOKIES=1
 ## Архитектура
 
 ```text
-PWA: app.ts + shelf.ts + api.ts + state.ts + analytics.ts
+PWA: app.ts + shelf.ts + finance.ts + api.ts + state.ts
                 │
              /api/v1
                 │
 Node HTTP API ──┼── OIDC / sessions / RBAC / CSRF
                 ├── Decision Engine + versioned calculations
-                ├── reservations + orders + audit
+                ├── reservations + orders + finance revision + audit
                 ├── PostgreSQL migrations and state
                 └── local/S3-compatible Proof object store
 ```
@@ -110,6 +113,7 @@ Node HTTP API ──┼── OIDC / sessions / RBAC / CSRF
 - `oidc.ts`, `security.ts`, `validation.ts` — вход и защитные контуры.
 - `object-store.ts` — локальное/S3-хранилище Proof.
 - `engine.ts`, `seed.ts` — расчётные правила и тестовые данные.
+- `finance-domain.ts`, `banking-provider.ts` — расчёты OMA Finance и границы DEMO/SANDBOX/LIVE.
 - `dist/` — генерируемый JavaScript для Node.js и браузера; в Git не хранится.
 - `public/` — PWA-клиент.
 - `tests/` — unit и интеграционные проверки.
@@ -125,6 +129,8 @@ Node HTTP API ──┼── OIDC / sessions / RBAC / CSRF
 | GET | `/api/v1/auth/config` | Доступные способы входа |
 | GET | `/api/v1/auth/oidc/start` | Начать OIDC-вход |
 | GET | `/api/v1/bootstrap` | Данные активного профиля |
+| GET | `/api/v1/finance` | DEMO-состояние OMA Finance текущего пользователя |
+| PUT | `/api/v1/finance` | Сохранить DEMO-состояние с проверкой ревизии |
 | POST | `/api/v1/solve` | Серверный расчёт |
 | POST | `/api/v1/projects` | Сохранить расчёт по `calculationId` |
 | POST | `/api/v1/cart/import-plan` | Импортировать проверенный расчёт |

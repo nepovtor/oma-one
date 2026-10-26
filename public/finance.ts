@@ -46,7 +46,7 @@ const heading=(title:string,description:string)=>`<div class="finance-heading"><
 export function pageFinance(materialMinor:number){
  syncFinanceMaterials(materialMinor);
  const pages:Record<string,()=>string>={dashboard, cards, history, budgets, milestones, simulation, goals};
- return `<section class="finance-shell" data-ui>${heading(screen==='dashboard'?'OMA Finance':({cards:'Мои карты',history:'История операций',budgets:'Бюджеты проектов',milestones:'План платежей',simulation:'Финансирование',goals:'Финансовые цели'}[screen]||'OMA Finance'),'Банковская демонстрация и финансовое управление жильём. Реальные деньги не используются.')}
+ return `<section class="finance-shell">${heading(screen==='dashboard'?'OMA Finance':({cards:'Мои карты',history:'История операций',budgets:'Бюджеты проектов',milestones:'План платежей',simulation:'Финансирование',goals:'Финансовые цели'}[screen]||'OMA Finance'),'Банковская демонстрация и финансовое управление жильём. Реальные деньги не используются.')}
  <nav class="finance-subnav" aria-label="Разделы OMA Finance">${navButton('dashboard','Обзор')}${navButton('cards','Карты')}${navButton('history','Операции')}${navButton('budgets','Бюджеты')}${navButton('milestones','Платежи')}${navButton('simulation','Калькулятор')}${navButton('goals','Цели')}</nav>
  ${(pages[screen]||dashboard)()}</section>`;
 }
