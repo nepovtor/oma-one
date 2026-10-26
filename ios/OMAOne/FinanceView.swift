@@ -32,6 +32,7 @@ private struct FinanceDashboardView: View {
                 accountCard
                 quickActions
                 projectSnapshot
+                planningTools
                 recentTransactions
                 transparency
             }
@@ -126,6 +127,19 @@ private struct FinanceDashboardView: View {
                 if item.id != store.state.transactions.prefix(3).last?.id { Divider().foregroundStyle(FinancePalette.line) }
             }
         }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var planningTools: some View {
+        HStack(spacing: 12) {
+            NavigationLink { FinanceSimulationView(store: store) } label: {
+                VStack(alignment:.leading,spacing:8) { Image(systemName:"function"); Text("Финансирование").font(.subheadline.weight(.semibold)); Text("Только калькулятор").font(.caption).foregroundStyle(FinancePalette.muted) }
+                    .frame(maxWidth:.infinity,alignment:.leading).padding(16).background(.white,in:RoundedRectangle(cornerRadius:16))
+            }
+            NavigationLink { FinanceGoalsView(store: store) } label: {
+                VStack(alignment:.leading,spacing:8) { Image(systemName:"target"); Text("Цели").font(.subheadline.weight(.semibold)); Text("Личный план").font(.caption).foregroundStyle(FinancePalette.muted) }
+                    .frame(maxWidth:.infinity,alignment:.leading).padding(16).background(.white,in:RoundedRectangle(cornerRadius:16))
+            }
+        }.foregroundStyle(FinancePalette.ink)
     }
 
     private var transparency: some View {
@@ -359,6 +373,93 @@ struct FinanceMilestonesView: View {
             Section { Text("MANUALLY_PAID — отметка пользователя, а не банковская транзакция. Proof не инициирует перевод мастеру.").font(.footnote).foregroundStyle(FinancePalette.muted) }
             if !store.notice.isEmpty { Section { Text(store.notice).font(.footnote) } }
         }.navigationTitle("План платежей").navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("finance.milestones")
+    }
+}
+
+struct FinanceSimulationView: View {
+    @ObservedObject var store: FinanceStore
+    private var simulation: FinanceSimulation { store.state.lastSimulation }
+    var body: some View {
+        Form {
+            Section("Параметры") {
+                Stepper("Стоимость: \(financeMoney(simulation.projectCostMinor))", value: value(\.projectCostMinor), in: 0...20_000_000, step: 10_000)
+                Stepper("Первоначальный взнос: \(financeMoney(simulation.downPaymentMinor))", value: value(\.downPaymentMinor), in: 0...simulation.projectCostMinor, step: 10_000)
+                Stepper("Срок: \(simulation.termMonths) мес.", value: value(\.termMonths), in: 1...600)
+                Stepper("Номинальная ставка: \(Double(simulation.annualRateBasisPoints) / 100, specifier: "%.2f")%", value: value(\.annualRateBasisPoints), in: 0...100_000, step: 25)
+                Stepper("Условные комиссии: \(financeMoney(simulation.feesMinor))", value: value(\.feesMinor), in: 0...5_000_000, step: 1_000)
+            }
+            Section("Расчёт") {
+                LabeledContent("Сумма финансирования", value: financeMoney(simulation.financedMinor))
+                LabeledContent("Ежемесячный платёж", value: financeMoney(simulation.monthlyPaymentMinor))
+                LabeledContent("Сумма платежей", value: financeMoney(simulation.totalPaymentsMinor))
+                LabeledContent("Переплата", value: financeMoney(simulation.overpaymentMinor))
+                LabeledContent("Комиссии", value: financeMoney(simulation.feesMinor))
+                LabeledContent("Суммарные расходы", value: financeMoney(simulation.totalCostMinor))
+            }
+            Section { Text("Это финансовая симуляция, не предложение банка, не скоринг и не одобрение кредита.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+            if !store.notice.isEmpty { Section { Text(store.notice).font(.footnote) } }
+        }.navigationTitle("Финансирование").navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("finance.simulation")
+    }
+
+    private func value(_ keyPath: KeyPath<FinanceSimulation, Int>) -> Binding<Int> {
+        Binding(get: { store.state.lastSimulation[keyPath: keyPath] }, set: { newValue in
+            let current = store.state.lastSimulation
+            store.updateSimulation(projectCostMinor: keyPath == \FinanceSimulation.projectCostMinor ? newValue : current.projectCostMinor,
+                                   downPaymentMinor: keyPath == \FinanceSimulation.downPaymentMinor ? newValue : current.downPaymentMinor,
+                                   termMonths: keyPath == \FinanceSimulation.termMonths ? newValue : current.termMonths,
+                                   annualRateBasisPoints: keyPath == \FinanceSimulation.annualRateBasisPoints ? newValue : current.annualRateBasisPoints,
+                                   feesMinor: keyPath == \FinanceSimulation.feesMinor ? newValue : current.feesMinor)
+        })
+    }
+}
+
+struct FinanceGoalsView: View {
+    @ObservedObject var store: FinanceStore
+    @State private var showingNewGoal = false
+    var body: some View {
+        List {
+            ForEach(store.state.goals) { goal in
+                VStack(alignment:.leading,spacing:9) {
+                    HStack { Text(goal.name).font(.headline); Spacer(); Text("\(Int((Double(goal.savedMinor) / Double(max(1, goal.targetMinor))) * 100))%").font(.subheadline.weight(.semibold)) }
+                    ProgressView(value: Double(goal.savedMinor), total: Double(max(1, goal.targetMinor))).tint(FinancePalette.blue)
+                    HStack { Text("\(financeMoney(goal.savedMinor)) из \(financeMoney(goal.targetMinor))"); Spacer(); Text(goal.targetDate.formatted(date:.abbreviated,time:.omitted)) }.font(.caption).foregroundStyle(FinancePalette.muted)
+                    Text("Ориентир: \(financeMoney(store.monthlyGoalAmount(goal))) в месяц").font(.subheadline.weight(.medium))
+                    Stepper("Накоплено", value: Binding(get: { goal.savedMinor }, set: { store.updateGoalSaved(goal.id, savedMinor: $0) }), in: 0...goal.targetMinor, step: 5_000)
+                }.padding(.vertical,7)
+            }
+            Section { Button("Создать цель") { showingNewGoal = true } }
+            Section { Text("В DEMO цель является личным планом, а не накопительным банковским счётом.").font(.footnote).foregroundStyle(FinancePalette.muted) }
+        }
+        .navigationTitle("Финансовые цели").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented:$showingNewGoal) { FinanceNewGoalView(store:store) }
+        .accessibilityIdentifier("finance.goals")
+    }
+}
+
+struct FinanceNewGoalView: View {
+    @ObservedObject var store: FinanceStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var targetMinor = 100_000
+    @State private var savedMinor = 0
+    @State private var targetDate = Calendar.current.date(byAdding:.month,value:6,to:Date()) ?? Date()
+    @State private var selectedProjectID: String?
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Название цели",text:$name)
+                Stepper("Нужно: \(financeMoney(targetMinor))",value:$targetMinor,in:10_000...20_000_000,step:10_000)
+                Stepper("Уже накоплено: \(financeMoney(savedMinor))",value:$savedMinor,in:0...targetMinor,step:5_000)
+                DatePicker("Дата достижения",selection:$targetDate,displayedComponents:.date)
+                Picker("Проект",selection:$selectedProjectID) { Text("Без проекта").tag(String?.none); ForEach(store.state.plans) { Text($0.projectTitle).tag(String?.some($0.projectID)) } }
+                if !store.notice.isEmpty { Text(store.notice).font(.footnote) }
+            }
+            .navigationTitle("Новая цель").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement:.cancellationAction) { Button("Отмена") { dismiss() } }
+                ToolbarItem(placement:.confirmationAction) { Button("Сохранить") { if store.addGoal(name:name,targetMinor:targetMinor,savedMinor:savedMinor,targetDate:targetDate,projectID:selectedProjectID) { dismiss() } } }
+            }
+        }
     }
 }
 

@@ -84,6 +84,27 @@ struct FinanceMilestone: Codable, Identifiable {
     var note: String
     var linkedTransactionID: String?
 }
+struct FinanceSavingsGoal: Codable, Identifiable {
+    var id: String
+    var name: String
+    var targetMinor: Int
+    var savedMinor: Int
+    var targetDate: Date
+    var projectID: String?
+    var createdAt: Date
+}
+struct FinanceSimulation: Codable {
+    var projectCostMinor: Int
+    var downPaymentMinor: Int
+    var termMonths: Int
+    var annualRateBasisPoints: Int
+    var feesMinor: Int
+    var financedMinor: Int
+    var monthlyPaymentMinor: Int
+    var totalPaymentsMinor: Int
+    var overpaymentMinor: Int
+    var totalCostMinor: Int
+}
 
 struct FinanceLocalState: Codable {
     var version = 1
@@ -93,6 +114,8 @@ struct FinanceLocalState: Codable {
     var transactions: [FinanceTransaction]
     var plans: [FinancePlan]
     var milestones: [FinanceMilestone]
+    var goals: [FinanceSavingsGoal]
+    var lastSimulation: FinanceSimulation
     var updatedAt: Date
 
     static func demo() -> FinanceLocalState {
@@ -117,6 +140,7 @@ struct FinanceLocalState: Codable {
             FinanceBudgetLine(id: "bath-extra", kind: .extra, estimatedMinor: 38_000, actualMinor: nil, source: "Ручная оценка"),
             FinanceBudgetLine(id: "bath-reserve", kind: .reserve, estimatedMinor: 80_000, actualMinor: nil, source: "Ручная оценка")
         ], updatedAt: now)
+        let simulation = FinanceStore.simulate(projectCostMinor: 550_000, downPaymentMinor: 150_000, termMonths: 24, annualRateBasisPoints: 1_800, feesMinor: 12_000)
         return FinanceLocalState(mode: .demo, account: account, cards: [card], transactions: [
             transaction("tx-1", days: -1, amount: 8_950, direction: "DEBIT", kind: .purchase, category: "Кафе", counterparty: "Кофейня у парка · синтетический пример"),
             transaction("tx-2", days: -2, amount: 3_400, direction: "DEBIT", kind: .purchase, category: "Транспорт", counterparty: "Городской транспорт · синтетический пример", status: .authorized),
@@ -125,7 +149,7 @@ struct FinanceLocalState: Codable {
         ], plans: [shelfPlan, bathroomPlan], milestones: [
             FinanceMilestone(id: "ms-materials", projectID: "shelf-local", title: "Купить материалы", amountMinor: 11_200, date: calendar.date(byAdding: .day, value: 7, to: now) ?? now, stage: "Подготовка", dependsOn: [], status: .planned, note: "Сумма после ZeroBuy", linkedTransactionID: nil),
             FinanceMilestone(id: "ms-install", projectID: "shelf-local", title: "Монтаж полки", amountMinor: 18_000, date: calendar.date(byAdding: .day, value: 10, to: now) ?? now, stage: "Монтаж", dependsOn: ["ms-materials"], status: .planned, note: "Ручная стоимость мастера", linkedTransactionID: nil)
-        ], updatedAt: now)
+        ], goals: [FinanceSavingsGoal(id: "goal-bathroom", name: "Обновление ванной", targetMinor: 800_000, savedMinor: 215_000, targetDate: calendar.date(byAdding: .month, value: 7, to: now) ?? now, projectID: "bathroom-demo", createdAt: now)], lastSimulation: simulation, updatedAt: now)
     }
 }
 
@@ -140,6 +164,17 @@ struct FinanceLocalState: Codable {
         } else {
             state = .demo()
         }
+    }
+
+    nonisolated static func simulate(projectCostMinor: Int, downPaymentMinor: Int, termMonths: Int, annualRateBasisPoints: Int, feesMinor: Int) -> FinanceSimulation {
+        let cost = max(0, projectCostMinor), down = min(cost, max(0, downPaymentMinor)), months = min(600, max(1, termMonths))
+        let financed = cost - down, rate = Double(max(0, annualRateBasisPoints)) / 10_000 / 12
+        let rawMonthly: Double
+        if financed == 0 { rawMonthly = 0 }
+        else if rate == 0 { rawMonthly = Double(financed) / Double(months) }
+        else { let factor = pow(1 + rate, Double(months)); rawMonthly = Double(financed) * (rate * factor) / (factor - 1) }
+        let monthly = Int(rawMonthly.rounded()), total = monthly * months
+        return FinanceSimulation(projectCostMinor: cost, downPaymentMinor: down, termMonths: months, annualRateBasisPoints: max(0, annualRateBasisPoints), feesMinor: max(0, feesMinor), financedMinor: financed, monthlyPaymentMinor: monthly, totalPaymentsMinor: total, overpaymentMinor: max(0, total - financed), totalCostMinor: down + total + max(0, feesMinor))
     }
 
     func persist() {
@@ -233,6 +268,29 @@ struct FinanceLocalState: Codable {
         }
         for row in rows { var visited = Set<String>(); if reaches(row.id, target: row.id, visited: &visited) { errors.append("Обнаружен цикл этапов") } }
         return Array(Set(errors))
+    }
+
+    func updateSimulation(projectCostMinor: Int, downPaymentMinor: Int, termMonths: Int, annualRateBasisPoints: Int, feesMinor: Int) {
+        state.lastSimulation = Self.simulate(projectCostMinor: projectCostMinor, downPaymentMinor: downPaymentMinor, termMonths: termMonths, annualRateBasisPoints: annualRateBasisPoints, feesMinor: feesMinor)
+        state.updatedAt = Date(); notice = "Расчёт сохранён. Это не кредитная заявка и не одобрение."
+    }
+
+    func addGoal(name: String, targetMinor: Int, savedMinor: Int, targetDate: Date, projectID: String?) -> Bool {
+        let title = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, targetMinor > 0, savedMinor >= 0 else { notice = "Проверьте название и суммы цели"; return false }
+        state.goals.append(FinanceSavingsGoal(id: "goal-\(UUID().uuidString.lowercased())", name: String(title.prefix(80)), targetMinor: targetMinor, savedMinor: min(savedMinor, targetMinor), targetDate: targetDate, projectID: projectID, createdAt: Date()))
+        state.updatedAt = Date(); notice = "Финансовая цель сохранена как личный план, не банковский счёт"; return true
+    }
+
+    func updateGoalSaved(_ id: String, savedMinor: Int) {
+        guard let index = state.goals.firstIndex(where: { $0.id == id }) else { return }
+        state.goals[index].savedMinor = min(state.goals[index].targetMinor, max(0, savedMinor)); state.updatedAt = Date()
+    }
+
+    func monthlyGoalAmount(_ goal: FinanceSavingsGoal, now: Date = Date()) -> Int {
+        let remaining = max(0, goal.targetMinor - goal.savedMinor)
+        let months = max(1, Calendar.current.dateComponents([.month], from: now, to: goal.targetDate).month ?? 1)
+        return Int(ceil(Double(remaining) / Double(months)))
     }
 }
 
