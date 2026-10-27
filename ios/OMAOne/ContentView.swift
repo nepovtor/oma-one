@@ -660,7 +660,7 @@ private struct HomeScreen: View {
 
                             VStack(alignment: .leading, spacing: 5) {
                                 HStack(spacing: 6) {
-                                    Text("МОЯ КВАРТИРА · 3D")
+                                    Text("МОЯ КВАРТИРА · ФОТО")
                                         .font(.system(size: 12, weight: .bold))
                                         .tracking(0.3)
                                     Text("НОВОЕ")

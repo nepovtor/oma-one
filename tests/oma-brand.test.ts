@@ -60,7 +60,7 @@ test('OMA web screens use the supplied mark, no ONE display name, and functional
 
 });
 
-test('OMA iOS navigation and 3D remain linked after branding',async()=>{
+test('OMA iOS navigation and photo HOME TWIN remain linked after branding',async()=>{
  const [ui,twin,plist,xcode]=await Promise.all([
   read('ios/OMAOne/ContentView.swift'),
   read('ios/OMAOne/HomeTwin3DView.swift'),
@@ -69,12 +69,13 @@ test('OMA iOS navigation and 3D remain linked after branding',async()=>{
  ]);
  assert.match(plist,/<key>CFBundleDisplayName<\/key>\s*<string>ОМА · Дом<\/string>/);
  assert.match(ui,/Image\("OMALogoReference"\)/);
- assert.match(ui,/МОЯ КВАРТИРА · 3D/);
+ assert.match(ui,/МОЯ КВАРТИРА · ФОТО/);
  assert.doesNotMatch(ui,/oma\.home\.startShelf/);
  assert.match(ui,/startShelf = true/);
  assert.match(ui,/startTwin = true/);
  assert.match(ui,/HomeTwin3DView\(shelfEvidence:/);
- assert.match(twin,/SceneView\(/);
+ assert.match(twin,/TwinPhotoViewer\(/);
+ assert.doesNotMatch(twin,/SceneView\(/);
  assert.match(xcode,/HomeTwin3DView\.swift in Sources/);
  assert.doesNotMatch(ui+twin+plist,/OMA ONE/);
  for(const v of ['home','catalog','cart','favorites','profile'])

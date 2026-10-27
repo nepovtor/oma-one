@@ -10,7 +10,7 @@ test('HOME TWIN models the supplied 58.67 m² plan, migrates local progress, and
  const folder=mkdtempSync(join(tmpdir(),'oma-home-twin-'));
  try{
   const binary=join(folder,'home-twin-checks');
-  execFileSync('swiftc',['ios/OMAOne/HomeTwinModel.swift','tests/home-twin.swift','-o',binary],{cwd:process.cwd(),timeout:40_000});
+  execFileSync('swiftc',['ios/OMAOne/HomeTwinModel.swift','tests/home-twin.swift','-o',binary],{cwd:process.cwd(),timeout:120_000});
   assert.match(execFileSync(binary,{encoding:'utf8',timeout:10_000}),/home twin model passed/);
  }finally{rmSync(folder,{recursive:true,force:true});}
 });

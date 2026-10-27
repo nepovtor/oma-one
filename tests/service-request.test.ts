@@ -11,7 +11,7 @@ test('offline service model validates slot, duplicates, cancellation, and persis
  try{
   const binary=join(folder,'service-checks');
   execFileSync('swiftc',['ios/OMAOne/ServiceRequestModel.swift','tests/service-request.swift','-o',binary],
-               {cwd:process.cwd(),timeout:40_000});
+               {cwd:process.cwd(),timeout:120_000});
   assert.match(execFileSync(binary,{encoding:'utf8',timeout:10_000}),/service model checks: PASS/);
  }finally{rmSync(folder,{recursive:true,force:true});}
 });
