@@ -15,8 +15,8 @@ test('OMA VIBE ships as an optional route while preserving the classic cart',asy
   fs.readFile(path.join(root,'public/sw.js'),'utf8')
  ]);
  assert.match(html,/vibe\.css/);
- assert.match(app,/vibe:pageVibe/);
- assert.match(app,/view==='vibe'/);
+ assert.match(app,/vibe\s*:\s*pageVibe/);
+ assert.match(app,/view\s*===\s*'vibe'/);
  assert.match(vibe,/Вернуться в обычный ОМА/);
  assert.match(vibe,/data-view="cart"/);
  assert.match(vibe,/Синтетический интерьерный референс/);
