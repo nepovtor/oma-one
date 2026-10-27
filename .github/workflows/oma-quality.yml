@@ -5,6 +5,7 @@ on:
       - main
       - feature/oma-brand-ui
       - feature/oma-vibe-mode
+      - feature/oma-unified-release
   pull_request:
     branches:
       - main
