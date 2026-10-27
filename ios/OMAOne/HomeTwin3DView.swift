@@ -340,10 +340,10 @@ struct HomeTwin3DView: View {
                 }
                 .font(.system(size: 13))
                 .accessibilityIdentifier("homeTwin.shelfRoom")
-                Text("Полка появится в 3D после записи о выполнении в существующем проекте OMA ONE; фото не означает экспертное подтверждение.")
+                Text("Полка появится в 3D после записи о выполнении в существующем проекте ОМА; фото не означает экспертное подтверждение.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             } else {
-                Text("Создайте проект «Повесить полку» в OMA ONE, чтобы связать его выполнение с моделью.")
+                Text("Создайте проект «Повесить полку» в ОМА, чтобы связать его выполнение с моделью.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
