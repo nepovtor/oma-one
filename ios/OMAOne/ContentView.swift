@@ -292,6 +292,14 @@ private struct Category: Identifiable {
         }
         lastMessage = "Комплект добавлен в корзину с учётом имеющихся единиц"
     }
+    func saveVibeProject(amount: Double) {
+        if let index = projects.firstIndex(where: { $0.scenario == "vibe-bedroom" }) {
+            projects[index].amount = amount
+        } else {
+            projects.insert(SavedProject(scenario: "vibe-bedroom", amount: amount), at: 0)
+        }
+        lastMessage = "VIBE-проект сохранён локально в общем разделе «Мой дом»"
+    }
     func save(_ scenario: Scenario, amount: Double) {
         projects.insert(SavedProject(scenario:scenario.rawValue,amount:amount),at:0)
         lastMessage = "Проект сохранён в «Мой дом»"
@@ -406,6 +414,7 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var tabPill
     @State private var tab: Tab = .home
+    @AppStorage("oma_vibe_enabled") private var vibeEnabled = false
     @State private var showONE = false
     @State private var startPlanner = false
     @State private var startShelf = false
@@ -416,10 +425,14 @@ struct ContentView: View {
     @AppStorage("oma_engine_url") private var backendURL = ""
 
     var body: some View {
+        Group {
+        if vibeEnabled {
+            VibeExperience(store: store, enabled: $vibeEnabled, classicTab: $tab, showONE: $showONE, startTwin: $startTwin)
+        } else {
         VStack(spacing:0) {
             Group {
                 switch tab {
-                case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
+                case .home: HomeScreen(store:store, showONE:$showONE, vibeEnabled:$vibeEnabled, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
                 case .catalog: CatalogScreen(store:store, category:$category, search:$search)
                 case .cart: CartScreen(store:store, selectedTab:$tab)
                 case .favorites: FavoritesScreen(store:store, selectedTab:$tab)
@@ -464,6 +477,8 @@ struct ContentView: View {
             .padding(.horizontal,10).padding(.top,10).padding(.bottom,5)
             .modifier(OmaTabBarSurface())
         }
+        } // classic interface
+        } // shared mode container
         .preferredColorScheme(.light)
         .onAppear {
             if ContentView.previewTwin {
@@ -568,6 +583,7 @@ private struct SearchField: View {
 private struct HomeScreen: View {
     @ObservedObject var store: Store
     @Binding var showONE: Bool
+    @Binding var vibeEnabled: Bool
     @Binding var startPlanner: Bool
     @Binding var startShelf: Bool
     @Binding var startTwin: Bool
@@ -588,6 +604,19 @@ private struct HomeScreen: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    Button { withAnimation(.easeInOut(duration: 0.25)) { vibeEnabled = true } } label: {
+                        HStack(spacing: 14) {
+                            Image("VibeBedroom").resizable().scaledToFill().frame(width: 94, height: 105).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text("ОМА · VIBE").font(.system(size: 11, weight: .bold)).tracking(1.3).foregroundStyle(Color(red: 0.08, green: 0.68, blue: 0.76))
+                                Text("Твой дом. Твой вайб.").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                                Text("Вдохновляйся и создавай своё пространство").font(.system(size: 12)).foregroundStyle(.white.opacity(0.9))
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.right").foregroundStyle(.white)
+                        }.padding(13).background(Color(red: 0.188, green: 0.169, blue: 0.482), in: RoundedRectangle(cornerRadius: 22))
+                    }
+                    .accessibilityIdentifier("oma.vibe.open")
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Добро пожаловать домой")
                             .font(.system(size: 23, weight: .bold, design: .rounded))
@@ -1462,7 +1491,7 @@ private struct ProjectsScreen: View {
                         }
                     } else {
                         VStack(alignment:.leading,spacing:9) {
-                            HStack {Text(Scenario(rawValue:p.scenario)?.title ?? "Проект").font(.headline);Spacer();Text(p.completed ? "Выполнен" : "В работе").font(.caption).foregroundColor(p.completed ? .green : Style.blue)}
+                            HStack {Text(p.scenario == "vibe-bedroom" ? "OMA VIBE · Моя спальня" : (Scenario(rawValue:p.scenario)?.title ?? "Проект")).font(.headline);Spacer();Text(p.completed ? "Выполнен" : "В работе").font(.caption).foregroundColor(p.completed ? .green : Style.blue)}
                             Text("Смета: \(rub(p.amount)) · \(p.date.formatted(date:.abbreviated,time:.omitted))").font(.caption).foregroundColor(.secondary)
                             if let img=p.photoName, let data=try? Data(contentsOf:URL(fileURLWithPath:img)),let photo=UIImage(data:data) {
                                 Image(uiImage:photo).resizable().scaledToFit().frame(height:120)
@@ -2081,5 +2110,311 @@ private struct ShelfFlowScreen: View {
         store.saveShelf(draft, amount: shoppingTotal)
         message = "Комплект обновлён с учётом домашних запасов"
         withAnimation(reduceMotion ? nil : OmaMotion.change) { currentStep = 3 }
+    }
+}
+
+
+// MARK: - OMA VIBE: separate optional lifestyle mode, connected to the same Store.
+// Interior pictures are synthetic references; not a scan, installed design or real catalog.
+private enum VibeStyle {
+    static let indigo = Color(red: 0.188, green: 0.169, blue: 0.482)
+    static let cyan = Color(red: 0.075, green: 0.678, blue: 0.761)
+    static let coral = Color(red: 1.0, green: 0.439, blue: 0.345)
+    static let cream = Color(red: 0.969, green: 0.961, blue: 0.941)
+    static let ink = Color(red: 0.125, green: 0.129, blue: 0.169)
+    static let lavender = Color(red: 0.925, green: 0.914, blue: 0.961)
+}
+private struct VibeExperience: View {
+    @ObservedObject var store: Store
+    @Binding var enabled: Bool
+    @Binding var classicTab: Tab
+    @Binding var showONE: Bool
+    @Binding var startTwin: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var screen = "welcome"
+    @AppStorage("oma_vibe_style") private var chosenStyle = "Soft Loft"
+    @AppStorage("oma_vibe_saved") private var vibeSaved = false
+    @AppStorage("oma_vibe_nodrill") private var noDrill = true
+    @AppStorage("oma_vibe_owned_storage") private var ownedStorage = false
+
+    private var suggested: [Product] {
+        ["p18", "p20"].compactMap { store.product($0) }
+    }
+    private var suggestedTotal: Double {
+        suggested.reduce(0) { $0 + (($1.id == "p20" && ownedStorage) ? 0 : $1.price) }
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("ОМА").font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(VibeStyle.coral)
+                Text("VIBE").font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(VibeStyle.indigo)
+                Spacer()
+                Button {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) { enabled = false; classicTab = .home }
+                } label: {
+                    Label("Обычный ОМА", systemImage: "arrow.uturn.backward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(VibeStyle.indigo)
+                        .padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(.white, in: Capsule())
+                }
+                .accessibilityIdentifier("oma.vibe.exit")
+            }
+            .padding(.horizontal, 20).padding(.top, 11).padding(.bottom, 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    switch screen {
+                    case "welcome": welcome
+                    case "styles": stylesPage
+                    case "studio": studioPage
+                    case "materials": materialsPage
+                    case "projects": projectsPage
+                    case "profile": profilePage
+                    default: homePage
+                    }
+                    Text("Неофициальный концепт · визуализация и цены демонстрационные · нет заказа в системах ОМА")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if screen != "welcome" {
+                HStack(spacing: 2) {
+                    navButton("house", "VIBE", "home")
+                    navButton("sparkles.rectangle.stack", "Стили", "styles")
+                    navButton("square.on.square", "Комната", "studio")
+                    navButton("bag", "Материалы", "materials")
+                    navButton("person", "Профиль", "profile")
+                }
+                .padding(.horizontal, 8).padding(.vertical, 7)
+                .background(.white)
+            }
+        }
+        .background(VibeStyle.cream)
+        .tint(VibeStyle.indigo)
+        .accessibilityIdentifier("oma.vibe.mode")
+    }
+    private func go(_ next: String) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { screen = next }
+    }
+    private func navButton(_ icon: String, _ title: String, _ target: String) -> some View {
+        Button { go(target) } label: {
+            VStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 19))
+                Text(title).font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(screen == target ? VibeStyle.indigo : .gray)
+            .frame(maxWidth: .infinity).frame(minHeight: 49)
+        }
+        .accessibilityLabel(title)
+    }
+    private func pillButton(_ label: String, _ target: String, coral: Bool = false) -> some View {
+        Button { go(target) } label: {
+            Text(label).font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white).frame(maxWidth: .infinity).frame(minHeight: 51)
+                .background(coral ? VibeStyle.coral : VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+    private func hero(_ image: String, height: CGFloat = 260) -> some View {
+        Image(image).resizable().scaledToFill().frame(maxWidth: .infinity)
+            .frame(height: height).clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .accessibilityLabel("Синтетическая интерьерная визуализация, не фотография реальной квартиры")
+    }
+    private var welcome: some View {
+        VStack(alignment: .leading, spacing: 17) {
+            Text("НОВЫЙ РЕЖИМ").font(.system(size: 12, weight: .black)).tracking(2)
+                .foregroundStyle(VibeStyle.cyan)
+            Text("Добро пожаловать\nв свой VIBE ✦")
+                .font(.system(size: 36, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+                .fixedSize(horizontal: false, vertical: true)
+            hero("VibeBedroom", height: 338)
+            Text("Не просто выбирай товары. Найди свой стиль и составь понятный план преображения комнаты.")
+                .font(.system(size: 16)).foregroundStyle(VibeStyle.ink)
+            pillButton("Создать свой вайб →", "home", coral: true)
+        }
+    }
+    private var homePage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Твой дом.\nТвой вайб.")
+                .font(.system(size: 39, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+                .fixedSize(horizontal: false, vertical: true)
+            ZStack(alignment: .bottomLeading) {
+                hero("VibeBedroom", height: 315)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("SOFT LOFT / МИНСК").font(.system(size: 11, weight: .bold)).tracking(1)
+                    Text("Твоя первая квартира — твоя история")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 24))
+            }
+            pillButton("Преобразить мою комнату ✨", "studio", coral: true)
+            Text("Идеи для тебя").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(VibeStyle.ink)
+            HStack(spacing: 12) {
+                Button { go("styles") } label: { smallImageCard("VibeLiving", title: "Найди свой стиль") }
+                Button { go("materials") } label: { smallImageCard("VibeBedroom", title: "До своего бюджета") }
+            }
+        }
+    }
+    private func smallImageCard(_ image: String, title: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(image).resizable().scaledToFill().frame(height: 105).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(VibeStyle.ink)
+        }
+        .frame(maxWidth: .infinity).padding(9)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+    }
+    private var stylesPage: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Какой интерьер — твой?")
+                .font(.system(size: 31, weight: .heavy, design: .rounded)).foregroundStyle(VibeStyle.indigo)
+            Text("Выбери настроение. Мы покажем концептуальный референс и доступные следующие шаги.")
+                .font(.subheadline).foregroundStyle(.secondary)
+            ForEach(["Soft Loft", "Japandi", "Cozy Minimal", "Scandinavian"], id: \.self) { name in
+                Button {
+                    chosenStyle = name
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(name == "Soft Loft" ? "VibeBedroom" : "VibeLiving")
+                            .resizable().scaledToFill().frame(width: 94, height: 92).clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(name).font(.system(size: 18, weight: .bold))
+                            Text(name == chosenStyle ? "Выбрано" : "Посмотреть стиль")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: name == chosenStyle ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(VibeStyle.indigo)
+                    }.padding(10).background(.white, in: RoundedRectangle(cornerRadius: 19))
+                        .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(name == chosenStyle ? VibeStyle.cyan : .clear, lineWidth: 2))
+                }
+                .foregroundStyle(VibeStyle.ink)
+            }
+            pillButton("Продолжить с \(chosenStyle)", "studio")
+        }
+    }
+    private var studioPage: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Моя спальня").font(.system(size: 33, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            HStack {
+                tag("13 м²")
+                tag("Съёмная квартира")
+                tag("Бюджет 1 200 BYN")
+            }
+            hero("VibeBedroom", height: 315)
+            Text("Образ комнаты · \(chosenStyle)")
+                .font(.system(size: 20, weight: .bold)).foregroundStyle(VibeStyle.ink)
+            Text("Это синтетическая иллюстрация целевого интерьера, а не AI-преображение фотографии твоей комнаты.")
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+            Toggle("Без сверления и необратимых изменений", isOn: $noDrill)
+                .font(.system(size: 14, weight: .semibold))
+                .tint(VibeStyle.cyan)
+                .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 16))
+            pillButton("Составить план и товары", "materials", coral: true)
+        }
+    }
+    private func tag(_ text: String) -> some View {
+        Text(text).font(.system(size: 11, weight: .bold))
+            .foregroundStyle(VibeStyle.indigo).padding(.horizontal, 10)
+            .padding(.vertical, 8).background(.white, in: Capsule())
+    }
+    private var materialsPage: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Сделать это у себя").font(.system(size: 31, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            Text("Доступные товары демонстрационного каталога ОМА. Для полного интерьера ассортимент потребуется расширить.")
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+            HStack {
+                Text("Предварительный список").font(.headline)
+                Spacer()
+                Text(rub(suggestedTotal)).font(.headline).foregroundStyle(VibeStyle.indigo)
+            }.padding(15).background(.white, in: RoundedRectangle(cornerRadius: 16))
+            Toggle("Обувница уже есть дома (ZeroBuy)", isOn: $ownedStorage)
+                .font(.system(size: 13, weight: .medium)).tint(VibeStyle.cyan)
+                .padding(14).background(VibeStyle.lavender, in: RoundedRectangle(cornerRadius: 16))
+            ForEach(suggested) { product in
+                HStack(spacing: 12) {
+                    ProductVisual(product: product, height: 82).frame(width: 82)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(product.name).font(.system(size: 14, weight: .bold))
+                        Text(rub(product.price)).font(.system(size: 13)).foregroundStyle(VibeStyle.indigo)
+                        Button("Добавить в общую корзину") { store.add(product.id) }
+                            .font(.system(size: 12, weight: .bold)).foregroundStyle(VibeStyle.coral)
+                            .disabled(product.id == "p20" && ownedStorage)
+                    }
+                    Spacer(minLength: 0)
+                }.padding(12).background(.white, in: RoundedRectangle(cornerRadius: 18))
+            }
+            if noDrill {
+                Label("Для съёмной квартиры не предлагаем крепёж без проверки условий. Сверление исключено из этого демонстрационного плана.", systemImage: "checkmark.shield.fill")
+                    .font(.system(size: 12)).foregroundStyle(VibeStyle.indigo)
+                    .padding(13).background(VibeStyle.lavender, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Button {
+                enabled = false
+                classicTab = .cart
+            } label: {
+                Text("Открыть общую корзину · \(store.cartCount)")
+                    .font(.system(size: 15, weight: .bold)).frame(maxWidth: .infinity)
+                    .frame(minHeight: 50).foregroundStyle(.white)
+                    .background(VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Button {
+                store.saveVibeProject(amount: suggestedTotal)
+                vibeSaved = true
+                go("projects")
+            } label: {
+                Text("Сохранить проект в «Мой дом»").font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity).frame(minHeight: 46)
+            }
+        }
+    }
+    private var projectsPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Мой дом").font(.system(size: 33, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            hero("VibeOverview", height: 240)
+            Text("Моя спальня · \(chosenStyle)").font(.system(size: 22, weight: .bold))
+            Text(vibeSaved ? "Концептуальный проект сохранён в общем кабинете" : "Начни с выбора стиля и сохрани проект")
+                .font(.subheadline).foregroundStyle(.secondary)
+            pillButton("Открыть проект", "studio")
+            Button {
+                startTwin = true
+                showONE = true
+            } label: {
+                Label("Открыть HOME TWIN", systemImage: "house")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(maxWidth: .infinity).frame(minHeight: 48)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Text("HOME TWIN показывает концептуальные рендеры и локальные отметки. Это не строительная экспертиза.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+    }
+    private var profilePage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Твой профиль").font(.system(size: 32, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            Text("Один аккаунт, одна корзина и одна история проектов для двух режимов.")
+                .font(.subheadline)
+            Label("В общей корзине: \(store.cartCount)", systemImage: "bag")
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+            Button("Вернуться в обычный ОМА") { enabled = false; classicTab = .home }
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).frame(minHeight: 52)
+                .background(VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+            Button("Посмотреть общий каталог") { enabled = false; classicTab = .catalog }
+                .font(.system(size: 15, weight: .semibold)).frame(minHeight: 48)
+        }
     }
 }

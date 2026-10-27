@@ -1,6 +1,8 @@
 /* ОМА: TypeScript-демо-прототип; нет подключения к системам ОМА */
 import {api} from './api.js';
 import {S} from './state.js';
+import {renderVibe} from './vibe.js';
+import type {VibeStage} from './vibe.js';
 import type {Dynamic} from './state.js';
 import {track,trackError} from './analytics.js';
 import {SHELF_STEPS, createShelfDraft, evaluateShelf, loadShelfDraft, saveShelfDraft, toggleShelfStep, canCompleteShelfStep} from './shelf.js';
@@ -36,10 +38,10 @@ const ICON_PATHS: Record<string,string>={
  location:'M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11zm0-8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 };
 const icon=(name:string,cls='ui-icon')=>`<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICON_PATHS[name]||ICON_PATHS.more}"/></svg>`;
-const NAV=[['home','home','Главная'],['catalog','catalog','Каталог'],['cart','cart','Корзина'],['favorites','favorite','Избранное'],['profile','profile','Профиль'],['shelf','shelf','Повесить полку'],['planner','planner','Другие задачи'],['projects','projects','Мои проекты'],['dna','dna','OMA DNA'],['zerobuy','zerobuy','ZeroBuy'],['antifail','antifail','AntiFail'],['domino','domino','Domino'],['synccity','synccity','SyncCity'],['proof','proof','Proof'],['forge','forge','OMA FORGE'],['pulse','pulse','OMA PULSE'],['business','business','Экономика']];
+const NAV=[['home','home','Главная'],['vibe','assistant','OMA VIBE'],['catalog','catalog','Каталог'],['cart','cart','Корзина'],['favorites','favorite','Избранное'],['profile','profile','Профиль'],['shelf','shelf','Повесить полку'],['planner','planner','Другие задачи'],['projects','projects','Мои проекты'],['dna','dna','OMA DNA'],['zerobuy','zerobuy','ZeroBuy'],['antifail','antifail','AntiFail'],['domino','domino','Domino'],['synccity','synccity','SyncCity'],['proof','proof','Proof'],['forge','forge','OMA FORGE'],['pulse','pulse','OMA PULSE'],['business','business','Экономика']];
 const FEATURE=[['zerobuy','zerobuy','ZeroBuy','Убирает из покупки то, что уже есть дома'],['antifail','antifail','AntiFail','Объясняет несовместимость до монтажа'],['domino','domino','Domino','Не даёт пропустить зависимый этап'],['synccity','synccity','SyncCity','Ищет совместимые заявки без раскрытия адресов'],['proof','proof','Proof','Сохраняет самостоятельную отметку результата'],['dna','dna','OMA DNA','Предлагает пример только для адаптации'],['forge','forge','OMA FORGE','Проверяет интерес без создания предзаказа'],['pulse','pulse','OMA PULSE','Отделяет сигнал от подтверждённого дефекта']];
 const PRIMARY_VIEWS=['home','catalog','cart','favorites','profile'];
-const ONE_VIEWS=['shelf','planner','projects','more'];
+const ONE_VIEWS=['vibe','shelf','planner','projects','more'];
 const PILOT_VIEWS=['business'];
 const ALL_VIEWS=new Set([...NAV.map((item: Dynamic)=>item[0]),'more']);
 const initialParams=new URLSearchParams(location.search);
@@ -81,7 +83,7 @@ function mobileBottom(){const n=[navFor('home'),navFor('catalog'),navFor('cart')
 function topbar(){return `<header class="topbar"><div class="crumb">Дом и ремонт <span>/ ${navFor(S.view)?.[2]||'Главная'}</span></div><div class="top-actions"><button class="quick-task" data-view="shelf">${icon('shelf')}Повесить полку</button><button class="icon-btn cart-count" data-view="cart" aria-label="Корзина, товаров: ${cartCount()}">${icon('cart')}<span>${cartCount()}</span></button><button class="profile-button" data-view="profile" aria-label="Открыть профиль ${enc(S.data.user.name)}"><span class="avatar" aria-hidden="true">${enc(S.data.user.name.slice(0,1))}</span><span>${enc(S.data.user.name)}</span></button></div></header>`;}
 function connectionBanner(){return S.online?'':`<div class="offline-banner" role="status"><span aria-hidden="true">◌</span><div><strong>Нет подключения к сети</strong><small>Можно просматривать уже загруженные экраны. Изменения станут доступны после восстановления связи.</small></div></div>`;}
 function enhanceForms(){document.querySelectorAll('.form-group').forEach((group: Dynamic)=>{const label=group.querySelector('label'),control=group.querySelector('input,select,textarea');if(label&&control?.id)label.htmlFor=control.id;});}
-function render(){if(!S.data)return;const main={home:pageHome,shelf:pageShelf,planner:pagePlanner,catalog:pageCatalog,projects:pageProjects,favorites:pageFavorites,dna:pageDna,zerobuy:pageZeroBuy,antifail:pageAntiFail,domino:pageDomino,synccity:pageSyncCity,proof:pageProof,forge:pageForge,pulse:pagePulse,business:pageBusiness,profile:pageProfile,cart:pageCart,more:pageMore}[S.view]||pageHome;
+function render(){if(!S.data)return;document.body.classList.toggle('vibe-mode',S.view==='vibe');const main={home:pageHome,vibe:pageVibe,shelf:pageShelf,planner:pagePlanner,catalog:pageCatalog,projects:pageProjects,favorites:pageFavorites,dna:pageDna,zerobuy:pageZeroBuy,antifail:pageAntiFail,domino:pageDomino,synccity:pageSyncCity,proof:pageProof,forge:pageForge,pulse:pagePulse,business:pageBusiness,profile:pageProfile,cart:pageCart,more:pageMore}[S.view]||pageHome;
  $('#app').innerHTML=`${mobileTop()}<div class="app-layout">${side()}<main class="main" id="main-content" tabindex="-1">${connectionBanner()}${topbar()}<div class="app-sheet">${main()}</div></main></div>${mobileBottom()}<button class="floating-help" data-action="chat-toggle" aria-label="${S.chatOpen?'Закрыть помощника':'Открыть помощника ОМА'}" aria-expanded="${S.chatOpen}">${icon('assistant')}</button>${S.chatOpen?chatPanel():''}${S.modal?modal(S.modal):''}`;
  document.body.classList.toggle('modal-open',Boolean(S.modal));
  enhanceForms();
@@ -103,8 +105,10 @@ function shelfProofCopy(status: string){return {
 }[status]||['Не завершено','grey'];}
 function shelfProofRecorded(status: string){return status!=='IN_PROGRESS';}
 function shelfProgress(draft: ShelfDraft){const configured=draft.wall!=='unknown'&&draft.shelfWeightKg>0&&draft.plannedLoadKg>0&&draft.fastener!=='none';const evaluation=shelfEvaluation();return [configured,evaluation.readiness==='candidate',draft.localCartProductIDs.length>0,shelfProofRecorded(evaluation.proofStatus)].filter(Boolean).length;}
+function pageVibe(){return renderVibe(String(S.vibeStage||'home') as VibeStage,String(S.vibeStyle||'Soft Loft'),Boolean(S.vibeOwned),S.data.products,cartCount(),Boolean(S.vibeSaved));}
 function pageHome(){const d=S.data,u=d.user,evaluation=shelfEvaluation(),progress=shelfProgress(S.shelfDraft),[statusTitle,statusText]=shelfReadinessCopy(evaluation.readiness),remoteTotal=d.cart.reduce((a: number,x: Dynamic)=>a+x.quantity*x.product.price,0),localTotal=S.shelfDraft.localCartProductIDs.reduce((sum: number,id: string)=>sum+(getProduct(id)?.price||0),0);
 return `<section class="home-intro oma-home-intro"><div class="home-copy oma-hero"><p class="context-line oma-hero-overline">ОМА · СЕРВИС ДЛЯ ДОМА</p><h1>Ремонт начинается <em>с понятного плана</em></h1><p>Здравствуйте, ${enc(u.name)}! Поможем разобраться в задаче, подобрать материалы и сохранить результат. Всё в одном месте.</p><div class="form-actions">${action('start-shelf','Начать с установки полки','','aria-label="Открыть проект установки полки"')}<button class="btn outline" data-view="planner">Другие задачи →</button></div><div class="oma-hero-foot"><span>03 · Сохраните результат</span></div></div></section>
+<section class="vibe-entry"><div><span>НОВЫЙ РЕЖИМ · OMA VIBE</span><h2>Твой дом. Твой вайб.</h2><p>Интерьерные идеи, план и товары — в отдельном молодёжном режиме.</p><button class="btn" data-view="vibe">Включить VIBE ✨</button></div><img src="/vibe/bedroom.jpg" loading="lazy" alt="Синтетическая визуализация интерьера спальни"></section>
 <div class="home-status" aria-label="Состояние проекта"><div><span class="status-kicker">Готовность проекта</span><strong>${progress} из 4 этапов</strong></div><div class="readiness-track" aria-hidden="true">${[0,1,2,3].map(index=>`<i class="${index<progress?'done':''}"></i>`).join('')}</div><p>${statusText}</p></div>
 <div class="summary-row"><button data-view="profile"><span>Дом</span><strong>${enc(u.kind)} · ${u.area} м²</strong></button><button data-view="projects"><span>Проекты</span><strong>${d.projects.length+1} включая локальный</strong></button><button data-view="cart"><span>Корзина</span><strong>${formatSum(remoteTotal+localTotal)}</strong></button><button data-view="catalog"><span>Город</span><strong>${icon('location','inline-icon')}${enc(u.city)}</strong></button></div>
 <div class="section-title"><div><h2>Решения для вашего дома</h2><p class="lead">Начните с задачи, а не с долгого поиска товаров.</p></div><button class="btn sm outline" data-view="planner">Все задачи</button></div>
@@ -180,6 +184,9 @@ function pageMore(){return `${title('Сервисы ОМА','Восемь мех
 async function solveTask(values: Dynamic){const result=await api('/solve','POST',{scenarioId:values.scenarioId||S.scenario,task:values.task||sc().title,budget:values.budget??sc().defaultBudget,area:values.area??sc().area,mode:values.mode||S.planMode,wrongMaterial:values.wrongMaterial||false});S.plan=result.plan;S.calculationId=result.calculationId;S.scenario=result.plan.scenarioId;S.planMode=result.plan.mode;S.sequenceConflicts=null;S.view='planner';window.history.replaceState({view:'planner'},'',viewUrl('planner'));track('calculation_completed',{view:'planner',scenarioId:S.scenario});render();return result.plan;}
 async function handleAction(actionName: string,el: Dynamic){const id=el.dataset.id;
  switch(actionName){
+ case 'vibe-stage':S.vibeStage=id;localStorage.setItem('oma-vibe-stage-v1',id);render();break;
+ case 'vibe-style':S.vibeStyle=id;localStorage.setItem('oma-vibe-style-v1',id);render();break;
+ case 'vibe-save':S.vibeSaved=true;localStorage.setItem('oma-vibe-saved-v1','true');S.vibeStage='projects';render();notify('VIBE-черновик сохранён в этом браузере');break;
  case 'new-task':track('task_started',{view:'home'});changeView('planner');break;
  case 'start-shelf':S.shelfStep=0;track('task_started',{view:'home',scenarioId:'shelf'});changeView('shelf');break;
  case 'choose-scenario':case 'select-scenario':if(id==='shelf'){changeView('shelf');break;}S.scenario=id;S.plan=null;S.calculationId=null;S.sequenceConflicts=null;S.planMode='hybrid';changeView('planner');break;
@@ -229,6 +236,7 @@ function readShelfConditions():ShelfDraft {return reconcileShelfCart({...S.shelf
 function readShelfChecks():ShelfDraft {return reconcileShelfCart({...S.shelfDraft,wallInspected:$('#shelf-wall-inspected').checked,utilitiesChecked:$('#shelf-utilities').checked,manufacturerInstructionsChecked:$('#shelf-manufacturer').checked});}
 function readShelfInventory():ShelfDraft {return reconcileShelfCart({...S.shelfDraft,ownedQuantities:Object.fromEntries(['p07','p08','p09','p25'].map(id=>[id,Number($(`#owned-${id}`).value)||0]))});}
 document.addEventListener('change',async (event: Dynamic)=>{
+ if(event.target.id==='vibe-owned'){S.vibeOwned=Boolean(event.target.checked);localStorage.setItem('oma-vibe-owned-v1',String(S.vibeOwned));render();return;}
  if(event.target.name==='result-mode'&&S.plan){const mode=event.target.value;S.planMode=mode;try{await mutation(()=>solveTask({task:S.plan.task,scenarioId:S.plan.scenarioId,budget:S.plan.budget,area:S.plan.area,mode,wrongMaterial:S.plan.flagged}),'Вариант пересчитан на сервере');}catch(error){notify(errorMessage(error),true);}return;}
  if(event.target.id==='shelf-photo'){try{const image=await fileToCompressedDataURL(event.target.files[0]);if(!image)return;const bytes=await (await fetch(image)).arrayBuffer();const digest=await crypto.subtle.digest('SHA-256',bytes);const hash=[...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,'0')).join('');persistShelf({...S.shelfDraft,photoDataUrl:image,photoHash:hash});render();notify('Фото и хеш сохранены только в этом браузере');}catch(error){notify(errorMessage(error),true);}return;}
  if(event.target.closest?.('#shelf-checks-form'))persistShelf(readShelfChecks());
