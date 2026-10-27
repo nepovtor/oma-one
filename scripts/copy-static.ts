@@ -9,6 +9,8 @@ const copies: ReadonlyArray<readonly [string, string]> = [
   ['public/index.html', 'public/index.html'],
   ['public/styles.css', 'public/styles.css'],
   ['public/oma-brand.css', 'public/oma-brand.css'],
+  ['public/vibe.css', 'public/vibe.css'],
+  ['public/vibe', 'public/vibe'],
   ['public/manifest.webmanifest', 'public/manifest.webmanifest'],
   ['public/icons', 'public/icons'],
   ['public/products', 'public/products'],
