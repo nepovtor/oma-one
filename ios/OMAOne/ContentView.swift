@@ -217,6 +217,13 @@ private struct Category: Identifiable {
         guard let data = UserDefaults.standard.data(forKey: "oma_demo_projects"), let items = try? JSONDecoder().decode([SavedProject].self, from: data) else { return [] }
         return items
     }() { didSet { UserDefaults.standard.set(try? JSONEncoder().encode(projects), forKey: "oma_demo_projects") } }
+    @Published var serviceLedger: DemoServiceLedger = {
+        guard let data = UserDefaults.standard.data(forKey: "oma_demo_service_requests_v1"),
+              let value = try? JSONDecoder().decode(DemoServiceLedger.self, from: data) else { return DemoServiceLedger() }
+        return value
+    }() {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(serviceLedger), forKey: "oma_demo_service_requests_v1") }
+    }
     @Published var orders: [String] = UserDefaults.standard.stringArray(forKey: "oma_demo_orders") ?? [] {
         didSet { UserDefaults.standard.set(orders, forKey: "oma_demo_orders") }
     }
@@ -370,6 +377,16 @@ private struct Category: Identifiable {
         case "SELF_REPORTED": return .selfReported
         default: return .planned
         }
+    }
+
+    func createServiceRequest(projectID: UUID?, kind: DemoServiceKind, desiredDay: Date,
+                              slot: DemoServiceSlot, note: String)
+        -> Result<DemoServiceRequest, DemoServiceRequestError> {
+        serviceLedger.create(projectID: projectID, kind: kind,
+                             desiredDay: desiredDay, slot: slot, note: note)
+    }
+    func cancelServiceRequest(id: UUID) {
+        _ = serviceLedger.cancel(id: id)
     }
 
     func checkout() {
@@ -1271,6 +1288,24 @@ private struct ONEHub: View {
                         Image(systemName:"arrow.right").font(.system(size:15,weight:.semibold)).frame(width:44,height:44)
                     }.accessibilityLabel("Открыть мои проекты")
                 }.padding(.horizontal,16).padding(.vertical,10).modifier(OmaCardSurface(radius:20))
+                NavigationLink {
+                    ServiceRequestScreen(store:store,projectID:nil)
+                } label: {
+                    HStack(spacing:14) {
+                        Image(systemName:"wrench.and.screwdriver")
+                            .font(.system(size:24))
+                            .foregroundStyle(Style.blue).frame(width:38)
+                        VStack(alignment:.leading,spacing:3) {
+                            Text("Найти помощь мастера · демо")
+                                .font(.system(size:16,weight:.semibold)).foregroundStyle(Style.ink)
+                            Text("Выбрать время и сохранить запрос локально")
+                                .font(.system(size:12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName:"chevron.right").foregroundStyle(Style.blue)
+                    }.padding(16).modifier(OmaCardSurface(radius:20))
+                }
+                .accessibilityIdentifier("service.openHub")
                 Text("Технологии проекта").font(.system(size:19,weight:.bold,design:.rounded)).foregroundColor(Style.ink)
                 OmaGlassGroup {
                     LazyVStack(spacing:10) {
@@ -1784,6 +1819,7 @@ private struct ShelfFlowScreen: View {
     @Binding var showONE: Bool
     @Binding var selectedTab: Tab
     @State private var draft: ShelfProjectData
+    @State private var showService = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var message = ""
     @AppStorage("oma_shelf_wizard_step") private var currentStep = 0
@@ -1853,6 +1889,9 @@ private struct ShelfFlowScreen: View {
                 .padding(.horizontal, 18).padding(.vertical, 10).background(.white)
         }
         .navigationTitle("Повесить полку").navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $showService) {
+            ServiceRequestScreen(store:store,projectID:draft.id)
+        }
         .alert("ОМА", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
             Button("Понятно", role: .cancel) { message = "" }
         } message: { Text(message) }
@@ -1923,6 +1962,25 @@ private struct ShelfFlowScreen: View {
             Toggle("Места скрытых проводов и труб проверены", isOn: $draft.utilitiesChecked)
             Toggle("Инструкция производителя сверена", isOn: $draft.manufacturerInstructionsChecked)
             decisionCard
+                VStack(alignment: .leading, spacing: 11) {
+                    sectionTitle("Помощь мастера", "Дополнительная услуга, пока без подключения реальных исполнителей")
+                    Text("Не уверены, что сможете выполнить монтаж сами? Укажите удобный день и сохраните заявку на консультацию или монтаж.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                    Button {
+                        saveDraft()
+                        showService = true
+                    } label: {
+                        Label("Запросить помощь мастера · демо", systemImage: "wrench.and.screwdriver")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                    }
+                    .accessibilityIdentifier("service.openShelf")
+                    if store.serviceLedger.activeRequest(for: draft.id) != nil {
+                        Text("Для этого проекта есть локально сохранённая заявка. Мастер не назначен.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(18).modifier(OmaCardSurface(radius: 20))
+
             Text("Предупреждения остаются видимыми. При статусе blocked комплект сформировать нельзя.")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
         }.tint(Style.blue).padding(18).modifier(OmaCardSurface(radius: 16))
@@ -2415,6 +2473,125 @@ private struct VibeExperience: View {
                 .background(VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
             Button("Посмотреть общий каталог") { enabled = false; classicTab = .catalog }
                 .font(.system(size: 15, weight: .semibold)).frame(minHeight: 48)
+        }
+    }
+}
+
+
+// MARK: - Offline demo service request. No real contractor is contacted.
+private struct ServiceRequestScreen: View {
+    @ObservedObject var store: Store
+    let projectID: UUID?
+    @State private var kind: DemoServiceKind = .shelfInstallation
+    @State private var date: Date = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    @State private var slot: DemoServiceSlot = .afternoon
+    @State private var note = ""
+    @State private var feedback = ""
+    @State private var showingConfirmation = false
+
+    private var relatedRequests: [DemoServiceRequest] {
+        store.serviceLedger.requests.filter { request in
+            projectID == nil || request.projectID == projectID
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Label("Помощь мастера", systemImage: "wrench.and.screwdriver")
+                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .foregroundStyle(Style.blue)
+                Text("Спланируйте услугу вместе с покупками. Это локальная демо-заявка: ОМА и мастер её не получают.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Section("Пожелания к услуге") {
+                Picker("Вид услуги", selection: $kind) {
+                    ForEach(DemoServiceKind.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
+                }
+                DatePicker("Предпочтительный день", selection: $date,
+                           in: Date()...(Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()),
+                           displayedComponents: .date)
+                    .accessibilityIdentifier("service.date")
+                Picker("Удобное время", selection: $slot) {
+                    ForEach(DemoServiceSlot.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
+                }
+                TextField("Комментарий (необязательно)", text: $note, axis: .vertical)
+                    .lineLimit(2...4)
+                    .accessibilityIdentifier("service.note")
+                Text("Не указывайте здесь домашний адрес, телефон и другие личные данные. Их некому отправлять в демоверсии.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Предварительная оценка · демо") {
+                HStack {
+                    Text("Условная стоимость услуги")
+                    Spacer()
+                    Text("\(kind.indicativePriceBYN) BYN")
+                        .font(.headline).foregroundStyle(Style.blue)
+                }
+                Text("Цена задана для демонстрации, не является тарифом ОМА или офертой. Доступность исполнителей не проверяется, оплата не производится.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    let result = store.createServiceRequest(projectID: projectID, kind: kind,
+                                                            desiredDay: date, slot: slot, note: note)
+                    switch result {
+                    case .success:
+                        feedback = "Демо-заявка сохранена на устройстве. Мастер не назначен и уведомление не отправлено."
+                        showingConfirmation = true
+                    case .failure(let error):
+                        feedback = error.message
+                        showingConfirmation = true
+                    }
+                } label: {
+                    Label("Сохранить демо-заявку", systemImage: "square.and.arrow.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 45)
+                }
+                .accessibilityIdentifier("service.save")
+            }
+            Section("Мои демо-заявки") {
+                if relatedRequests.isEmpty {
+                    Text("Сохранённых заявок пока нет")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(relatedRequests) { item in
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text(item.kind.title).font(.headline)
+                            Spacer()
+                            Text(item.status.title)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("\(item.desiredDay.formatted(date: .abbreviated, time: .omitted)) · \(item.slot.title) · \(item.indicativePriceBYN) BYN (демо)")
+                            .font(.caption)
+                        if !item.note.isEmpty { Text(item.note).font(.caption).foregroundStyle(.secondary) }
+                        if item.status == .savedLocally {
+                            Button("Отменить демо-заявку", role: .destructive) {
+                                store.cancelServiceRequest(id: item.id)
+                            }
+                            .font(.subheadline)
+                            .accessibilityIdentifier("service.cancel")
+                        }
+                    }
+                    .padding(.vertical, 5)
+                }
+            }
+            Section {
+                Text("Эта функция предназначена только для проверки будущего пользовательского пути. Услуга, доступность мастера и её выполнение не подтверждены.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Style.soft)
+        .navigationTitle("Запрос услуги · демо")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("OMA ONE", isPresented: $showingConfirmation) {
+            Button("Понятно", role: .cancel) { showingConfirmation = false }
+        } message: {
+            Text(feedback)
         }
     }
 }
