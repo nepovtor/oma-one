@@ -21,6 +21,9 @@ test('OMA web screens use the supplied mark, no ONE display name, and functional
  assert.match(html,/aria-live="polite"/);
  assert.doesNotMatch(html+app+proof,/OMA ONE/);
  assert.match(app,/class="home-intro oma-home-intro"/);
+ assert.doesNotMatch(app,/oma-featured-project/);
+ assert.doesNotMatch(app,/01 · Опишите задачу|02 · Проверьте решение/);
+ assert.match(app,/03 · Сохраните результат/);
  assert.match(app,/data-action="start-shelf"/);
  assert.match(app,/data-view="planner"/);
  assert.match(app,/data-view="cart"/);
@@ -67,6 +70,7 @@ test('OMA iOS navigation and 3D remain linked after branding',async()=>{
  assert.match(plist,/<key>CFBundleDisplayName<\/key>\s*<string>ОМА · Дом<\/string>/);
  assert.match(ui,/Image\("OMALogoReference"\)/);
  assert.match(ui,/МОЯ КВАРТИРА · 3D/);
+ assert.doesNotMatch(ui,/oma\.home\.startShelf/);
  assert.match(ui,/startShelf = true/);
  assert.match(ui,/startTwin = true/);
  assert.match(ui,/HomeTwin3DView\(shelfEvidence:/);

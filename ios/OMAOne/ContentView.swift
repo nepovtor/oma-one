@@ -6,16 +6,16 @@ import CryptoKit
 // MARK: - Demo styling. User supplied reference screenshots are for a hackathon concept, not an official OMA release.
 private enum Style {
     // Палитра основана на корпоративных материалах ОМА; проект неофициальный.
-    static let blue = Color(red: 0.188, green: 0.169, blue: 0.482)
-    static let deepBlue = Color(red: 0.133, green: 0.129, blue: 0.359)
-    static let cyan = Color(red: 0.074, green: 0.675, blue: 0.761)
-    static let orange = Color(red: 0.949, green: 0.412, blue: 0.29)
-    static let ink = Color(red: 0.125, green: 0.133, blue: 0.231)
-    static let soft = Color(red: 0.961, green: 0.965, blue: 0.984)
-    static let paleBlue = Color(red: 0.927, green: 0.925, blue: 0.984)
-    static let paleCyan = Color(red: 0.886, green: 0.980, blue: 0.988)
-    static let paleOrange = Color(red: 1.0, green: 0.939, blue: 0.910)
-    static let line = Color(red: 0.886, green: 0.890, blue: 0.938)
+    static let blue = Color(red: 0.027, green: 0.373, blue: 0.659)
+    static let deepBlue = Color(red: 0.024, green: 0.302, blue: 0.533)
+    static let cyan = Color(red: 0.039, green: 0.624, blue: 0.710)
+    static let orange = Color(red: 0.784, green: 0.357, blue: 0.153)
+    static let ink = Color(red: 0.094, green: 0.196, blue: 0.278)
+    static let soft = Color(red: 0.933, green: 0.957, blue: 0.973)
+    static let paleBlue = Color(red: 0.910, green: 0.953, blue: 0.984)
+    static let paleCyan = Color(red: 0.898, green: 0.969, blue: 0.976)
+    static let paleOrange = Color(red: 1.0, green: 0.953, blue: 0.910)
+    static let line = Color(red: 0.882, green: 0.910, blue: 0.925)
     static let hero = blue
 }
 
@@ -91,16 +91,12 @@ private struct OmaCardSurface: ViewModifier {
             .background(.white, in: RoundedRectangle(cornerRadius: radius))
             .overlay(RoundedRectangle(cornerRadius: radius)
                 .strokeBorder(Style.line, lineWidth: 1))
-            .shadow(color: Style.blue.opacity(0.045), radius: 10, y: 3)
     }
 }
 
 private struct OmaGlassGroup<Content:View>:View {
     @ViewBuilder let content:()->Content
-    var body:some View {
-        if #available(iOS 26, *) { GlassEffectContainer(spacing:12) { content() } }
-        else { content() }
-    }
+    var body:some View { content() }
 }
 
 private struct OmaTabBarSurface: ViewModifier {
@@ -467,7 +463,6 @@ struct ContentView: View {
             }
             .padding(.horizontal,10).padding(.top,10).padding(.bottom,5)
             .modifier(OmaTabBarSurface())
-            .shadow(color:Style.blue.opacity(0.08),radius:16,y:-4)
         }
         .preferredColorScheme(.light)
         .onAppear {
@@ -602,70 +597,6 @@ private struct HomeScreen: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, 5)
-
-                    Button {
-                        startShelf = true
-                        showONE = true
-                    } label: {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack(spacing: 7) {
-                                Image(systemName: "house.fill")
-                                Text("СЕРВИС ОМА")
-                                    .tracking(1.1)
-                                Spacer()
-                                Image(systemName: "arrow.up.right")
-                            }
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Style.paleCyan)
-
-                            Text("Ремонт начинается\nс хорошего плана")
-                                .font(.system(size: 27, weight: .bold, design: .rounded))
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Text("Уточним задачу, проверим материалы и поможем не покупать лишнего.")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.white.opacity(0.88))
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            HStack(alignment: .bottom, spacing: 8) {
-                                VStack(alignment: .leading, spacing: 9) {
-                                    Text("НАЧАТЬ С ЗАДАЧИ")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .tracking(0.5)
-                                        .foregroundStyle(.white.opacity(0.72))
-                                    HStack(spacing: 7) {
-                                        Text("Повесить полку")
-                                        Image(systemName: "arrow.right")
-                                    }
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(Style.deepBlue)
-                                    .padding(.horizontal, 13)
-                                    .frame(minHeight: 40)
-                                    .background(Style.paleCyan, in: Capsule())
-                                }
-                                Spacer(minLength: 0)
-                                Image("ProductP07")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 96, height: 96)
-                                    .padding(7)
-                                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 18))
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                        .padding(20)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .foregroundStyle(.white)
-                        .background(
-                            LinearGradient(colors: [Style.deepBlue, Style.blue],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing),
-                            in: RoundedRectangle(cornerRadius: 24)
-                        )
-                    }
-                    .buttonStyle(OmaPressButtonStyle())
-                    .accessibilityIdentifier("oma.home.startShelf")
 
                     Button {
                         startTwin = true
@@ -1260,16 +1191,17 @@ private struct ONEHub: View {
                     Text("От задачи к готовому плану")
                         .font(.system(size:25,weight:.bold,design:.rounded)).fixedSize(horizontal:false,vertical:true)
                     Text("Подберите материалы, проверьте ограничения и сохраните проект.")
-                        .font(.system(size:14)).foregroundStyle(.white.opacity(0.85))
+                        .font(.system(size:14)).foregroundStyle(Style.ink.opacity(0.72))
                     NavigationLink { PlannerScreen(store:store,showONE:$showONE,selectedTab:$selectedTab) } label: {
                         HStack {Text("Составить план").font(.system(size:15,weight:.semibold)); Spacer(); Image(systemName:"arrow.right")}
                             .foregroundColor(Style.blue).padding(.horizontal,16).frame(height:46)
                             .background(.white,in:RoundedRectangle(cornerRadius:14))
                     }.padding(.top,3)
                 }
-                .foregroundColor(.white).padding(19)
-                .background(Style.hero)
-                .clipShape(RoundedRectangle(cornerRadius:22))
+                .foregroundColor(Style.ink).padding(19)
+                .background(Style.paleBlue)
+                .clipShape(RoundedRectangle(cornerRadius:16))
+                .overlay(RoundedRectangle(cornerRadius:16).strokeBorder(Style.line, lineWidth:1))
                 NavigationLink {
                     ShelfFlowScreen(store:store,showONE:$showONE,selectedTab:$selectedTab,
                                     existing:store.projects.first(where:{$0.shelf != nil})?.shelf)
@@ -1319,8 +1251,8 @@ private struct ONEHub: View {
                                     Image(systemName:feature.symbol).font(.system(size:20,weight:.regular))
                                         .foregroundColor(Style.blue).frame(width:30)
                                     VStack(alignment:.leading,spacing:3) {
-                                        Text(feature.title).font(.system(size:15,weight:.semibold)).foregroundColor(Style.ink)
-                                        Text(feature.description).font(.system(size:12)).foregroundColor(.secondary)
+                                        Text(feature.description).font(.system(size:15,weight:.semibold)).foregroundColor(Style.ink)
+                                        Text(feature.title).font(.system(size:12)).foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     Image(systemName:"chevron.right").font(.system(size:12,weight:.semibold)).foregroundColor(.secondary)
@@ -1825,6 +1757,7 @@ private struct ShelfFlowScreen: View {
     @State private var draft: ShelfProjectData
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var message = ""
+    @AppStorage("oma_shelf_wizard_step") private var currentStep = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(store: Store, showONE: Binding<Bool>, selectedTab: Binding<Tab>, existing: ShelfProjectData?) {
@@ -1862,134 +1795,33 @@ private struct ShelfFlowScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Хочу повесить полку")
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("Повесить полку")
                             .font(.system(size: 25, weight: .bold, design: .rounded))
                             .foregroundStyle(Style.ink)
-                        Text("Уточним условия монтажа, затем составим список покупок. Всё сохраняется на iPhone.")
+                        Text("Условия, проверка, комплект, работы и результат — один шаг за раз.")
                             .font(.system(size: 14)).foregroundStyle(.secondary)
                     }
-                    Image("ProductP07").resizable().scaledToFill()
-                        .frame(width: 84, height: 84).clipShape(RoundedRectangle(cornerRadius: 16))
+                    Spacer(minLength: 0)
+                    Image("ProductP07").resizable().scaledToFit()
+                        .frame(width: 76, height: 66).padding(6)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityLabel("Иллюстрация настенной полки")
                 }
 
-                VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("Стена и нагрузка", "Ответы пользователя, не результат осмотра специалистом")
-                    Picker("Материал стены", selection: $draft.wall) {
-                        ForEach(ShelfSurface.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .accessibilityIdentifier("shelf.wall")
-                    HStack(spacing: 14) {
-                        numberField("Вес полки", value: $draft.shelfWeightKg)
-                        numberField("Что поставите", value: $draft.plannedLoadKg)
-                    }
-                    Text("Суммарная нагрузка: \(draft.totalLoadKg.formatted(.number.precision(.fractionLength(0...1)))) кг. Если вес неизвестен, сохраните черновик и уточните его.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
-                    Picker("Крепёж для проверки", selection: $draft.fastener) {
-                        ForEach(ShelfFastener.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .accessibilityIdentifier("shelf.fastener")
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
+                stepProgress
+                currentStepContent
 
-                VStack(alignment: .leading, spacing: 14) {
-                    sectionTitle("Перед сверлением", "Отметьте только то, что действительно проверили")
-                    Toggle("Стена осмотрена: нет видимых повреждений", isOn: $draft.wallInspected)
-                    Toggle("Места скрытых проводов и труб проверены", isOn: $draft.utilitiesChecked)
-                    Toggle("Нагрузка сверена с инструкцией крепежа", isOn: $draft.manufacturerInstructionsChecked)
-                    Text("Это ответы пользователя. Приложение не удостоверяет прочность стены и не заменяет специалиста.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }.tint(Style.blue).padding(18).modifier(OmaCardSurface(radius: 20))
-
-                decisionCard
-
-                VStack(alignment: .leading, spacing: 12) {
-                    sectionTitle("Список покупок", "Локальный демо-каталог · цены и наличие не подтверждены ОМА")
-                    ForEach(listProducts) { product in
-                        HStack(spacing: 12) {
-                            ProductVisual(product:product,height:58).frame(width:58).accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(product.name).font(.system(size: 14, weight: .semibold))
-                                Text("\(rub(product.price)) · цена демо").font(.system(size: 12)).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        Stepper("Есть дома: \(draft.ownedQuantities[product.id] ?? 0) шт.",
-                                value: Binding(get: { draft.ownedQuantities[product.id] ?? 0 },
-                                               set: { draft.ownedQuantities[product.id] = $0 }), in: 0...1)
-                            .font(.system(size: 13))
-                    }
-                    if readiness != .candidate {
-                        Text("Комплект пока не сформирован. Уточните условия или сохраните проект для консультации со специалистом.")
-                            .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
-                    } else {
-                        Text("Крепёж прошёл только предварительную проверку демо-правил. Перед монтажом нужна сверка с инструкцией и фактической стеной.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                    HStack { Text("К покупке · демо"); Spacer(); Text(rub(shoppingTotal)).fontWeight(.bold) }
-                        .font(.system(size: 17)).foregroundStyle(Style.ink)
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                VStack(alignment: .leading, spacing: 13) {
-                    sectionTitle("Порядок работ", "Domino проверяет порядок отмеченных этапов")
-                    ForEach(ShelfProjectData.steps.indices, id: \.self) { index in
-                        let step = ShelfProjectData.steps[index]
-                        Button {
-                            draft.completedStepIDs = EvidenceEngine.shared
-                                .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs
-                        } label: {
-                            HStack(spacing: 11) {
-                                Image(systemName: draft.completedStepIDs.contains(step.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(Style.blue)
-                                Text(step.title).foregroundStyle(Style.ink)
-                                Spacer()
-                            }.frame(minHeight: 42)
-                        }.buttonStyle(OmaPressButtonStyle())
-                    }
-                    if !dominoValid {
-                        Text("Порядок нарушен. Проверьте этапы: монтаж нельзя подтверждать раньше осмотра, коммуникаций и крепежа.")
-                            .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
-                    }
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                VStack(alignment: .leading, spacing: 12) {
-                    sectionTitle("Результат работ", "Proof · только личная запись, не проверка специалистом")
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label(draft.hasProofPhoto ? "Заменить фото результата" : "Прикрепить фото результата", systemImage: "photo")
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    if draft.hasProofPhoto { Text("Фото сохранено локально на устройстве").font(.system(size: 12)).foregroundStyle(.secondary) }
-                    Button("Записать выполнение со слов пользователя") {
-                        saveDraft()
-                        store.complete(draft.id)
-                        message = store.lastMessage
-                    }
-                    .disabled(readiness != .candidate || !draft.allStepsDone || !dominoValid)
-                    .font(.system(size: 14, weight: .semibold))
-                    if isRecorded { Text("Выполнение записано · экспертной проверки нет").foregroundStyle(Style.blue) }
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                Text("Неофициальный офлайн-прототип. Изображения товаров иллюстративные; цены, остатки и заказы демонстрационные.")
+                Text("Неофициальный офлайн-прототип. Цены, остатки и заказы демонстрационные. Фото и отметка пользователя не являются экспертной проверкой.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }.padding(18)
         }
         .background(Style.soft)
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 10) {
-                Button(hasSavedProject ? "Сохранить изменения" : "Сохранить черновик") { saveDraft() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 14))
-                Button(readiness == .candidate ? "В корзину" : "Комплект не готов") { addShoppingList() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(readiness == .candidate ? .white : Style.ink)
-                    .background(readiness == .candidate ? Style.blue : Style.line,
-                                in: RoundedRectangle(cornerRadius: 14))
-                    .disabled(readiness != .candidate || zeroResult == nil)
-            }.padding(.horizontal, 18).padding(.vertical, 10).background(.white)
+            wizardActions
+                .padding(.horizontal, 18).padding(.vertical, 10).background(.white)
         }
         .navigationTitle("Повесить полку").navigationBarTitleDisplayMode(.inline)
         .alert("ОМА", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
@@ -2014,6 +1846,169 @@ private struct ShelfFlowScreen: View {
                 } catch { message = "Не удалось сохранить фото на устройстве" }
             }
         }
+    }
+
+    private var stepProgress: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<4, id: \.self) { index in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(index + 1)").font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(index <= currentStep ? Style.blue : .secondary)
+                    Capsule().fill(index <= currentStep ? Style.cyan : Style.line).frame(height: 3)
+                }.accessibilityLabel(["Условия", "Проверка", "Комплект", "Работы и результат"][index])
+            }
+        }
+    }
+
+    @ViewBuilder private var currentStepContent: some View {
+        switch currentStep {
+        case 0: conditionsStep
+        case 1: checksStep
+        case 2: kitStep
+        default: finishStep
+        }
+    }
+
+    private var conditionsStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionTitle("Условия", "Сохранённые параметры поступают в локальный расчётный движок")
+            Picker("Материал стены", selection: $draft.wall) {
+                ForEach(ShelfSurface.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.accessibilityIdentifier("shelf.wall")
+            Picker("Тип крепежа", selection: $draft.fastener) {
+                ForEach(ShelfFastener.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.accessibilityIdentifier("shelf.fastener")
+            HStack(spacing: 12) {
+                numberField("Вес полки", value: $draft.shelfWeightKg)
+                numberField("Что поставите", value: $draft.plannedLoadKg)
+            }
+            Text("Суммарная нагрузка: \(draft.totalLoadKg.formatted(.number.precision(.fractionLength(0...1)))) кг")
+                .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.ink)
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var checksStep: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            sectionTitle("Проверка", "AntiFail · совместимость крепежа, стены и нагрузки")
+            Toggle("Стена осмотрена: нет видимых повреждений", isOn: $draft.wallInspected)
+            Toggle("Места скрытых проводов и труб проверены", isOn: $draft.utilitiesChecked)
+            Toggle("Инструкция производителя сверена", isOn: $draft.manufacturerInstructionsChecked)
+            decisionCard
+            Text("Предупреждения остаются видимыми. При статусе blocked комплект сформировать нельзя.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }.tint(Style.blue).padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var kitStep: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("Комплект и корзина", "ZeroBuy · учёт точного количества вещей дома")
+            ForEach(listProducts) { product in
+                VStack(spacing: 8) {
+                    HStack(spacing: 11) {
+                        ProductVisual(product:product,height:54).frame(width:54).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(product.name).font(.system(size: 14, weight: .semibold))
+                            Text("\(rub(product.price)) · цена демо").font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Stepper("Есть дома: \(draft.ownedQuantities[product.id] ?? 0) шт.",
+                            value: Binding(get: { draft.ownedQuantities[product.id] ?? 0 },
+                                           set: { draft.ownedQuantities[product.id] = $0 }), in: 0...1)
+                        .font(.system(size: 13))
+                }
+            }
+            HStack { Text("К покупке · демо"); Spacer(); Text(rub(shoppingTotal)).fontWeight(.bold) }
+                .font(.system(size: 17)).foregroundStyle(Style.ink)
+            Text("Изменение условий пересчитывает комплект; несовместимый крепёж удаляется перед следующим добавлением.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var finishStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionTitle("Работы и результат", "Domino открывает этап только после обязательных предыдущих")
+            ForEach(0..<ShelfProjectData.steps.count, id: \.self) { index in
+                let step = ShelfProjectData.steps[index]
+                let done = draft.completedStepIDs.contains(step.id)
+                let available = done || (EvidenceEngine.shared.canCompleteShelfStep(draft.completedStepIDs, stepID: step.id) ?? false)
+                Button {
+                    draft.completedStepIDs = EvidenceEngine.shared
+                        .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs
+                } label: {
+                    HStack(spacing: 11) {
+                        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(done ? Style.blue : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(step.title).foregroundStyle(Style.ink)
+                            Text(available ? "Можно выполнить" : "Сначала завершите предыдущий этап")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }.frame(minHeight: 44)
+                }.disabled(!available).buttonStyle(OmaPressButtonStyle())
+            }
+            if !dominoValid {
+                Text("Порядок ещё не завершён. Зависимый этап нельзя отметить раньше обязательных предыдущих.")
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
+            }
+            Divider()
+            sectionTitle("Proof", "Личная запись результата, не проверка специалистом")
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label(draft.hasProofPhoto ? "Заменить фото результата" : "Прикрепить фото результата", systemImage: "photo")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            if draft.hasProofPhoto { Text("Фото сохранено локально на устройстве").font(.system(size: 12)).foregroundStyle(.secondary) }
+            Button("Записать выполнение со слов пользователя") {
+                saveDraft(); store.complete(draft.id); message = store.lastMessage
+            }
+            .disabled(readiness != .candidate || !draft.allStepsDone || !dominoValid)
+            .font(.system(size: 14, weight: .semibold))
+            if isRecorded { Text("Выполнение записано · экспертной проверки нет").foregroundStyle(Style.blue) }
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var wizardActions: some View {
+        HStack(spacing: 10) {
+            if currentStep > 0 {
+                Button("Назад") { currentStep -= 1 }
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(minWidth: 86, minHeight: 50)
+                    .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 10))
+            }
+            Button(nextTitle) { advance() }
+                .font(.system(size: 14, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .foregroundStyle(canAdvance ? .white : Style.ink)
+                .background(canAdvance ? Style.cyan : Style.line, in: RoundedRectangle(cornerRadius: 10))
+                .disabled(!canAdvance)
+                .accessibilityIdentifier("shelf.next")
+        }
+    }
+
+    private var canAdvance: Bool {
+        switch currentStep {
+        case 0: return draft.wall != .unknown && draft.fastener != .none && draft.shelfWeightKg > 0 && draft.plannedLoadKg > 0
+        case 1: return readiness == .candidate
+        case 2: return readiness == .candidate && zeroResult != nil
+        default: return true
+        }
+    }
+
+    private var nextTitle: String {
+        switch currentStep {
+        case 0: "Далее: проверка"
+        case 1: readiness == .blocked ? "Комплект заблокирован" : "Далее: комплект"
+        case 2: "Добавить комплект и далее"
+        default: hasSavedProject ? "Сохранить изменения" : "Сохранить проект"
+        }
+    }
+
+    private func advance() {
+        saveDraft()
+        if currentStep == 2 { addShoppingList(); return }
+        if currentStep < 3 { currentStep += 1 }
+        else { message = store.lastMessage }
     }
 
     private func sectionTitle(_ title: String, _ detail: String) -> some View {
@@ -2076,15 +2071,15 @@ private struct ShelfFlowScreen: View {
 
     private func addShoppingList() {
         guard zeroResult != nil else { message = "Локальный расчёт недоступен"; return }
+        // Replace the previous local shelf kit instead of accumulating incompatible quantities.
+        ["p07", "p08", "p09", "p25"].forEach(store.remove)
         for item in zeroItems {
             guard let id = item["id"] as? String, let count = (item["toBuy"] as? NSNumber)?.intValue,
                   listProducts.contains(where: { $0.id == id }), count > 0 else { continue }
             store.add(id, qty: count)
         }
         store.saveShelf(draft, amount: shoppingTotal)
-        withAnimation(reduceMotion ? nil : OmaMotion.change) {
-            selectedTab = .cart
-            showONE = false
-        }
+        message = "Комплект обновлён с учётом домашних запасов"
+        withAnimation(reduceMotion ? nil : OmaMotion.change) { currentStep = 3 }
     }
 }
