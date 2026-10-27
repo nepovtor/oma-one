@@ -4,9 +4,11 @@ on:
     branches:
       - main
       - feature/oma-brand-ui
+      - feature/oma-vibe-mode
   pull_request:
     branches:
       - main
+      - feature/oma-brand-ui
   workflow_dispatch:
 
 permissions:
