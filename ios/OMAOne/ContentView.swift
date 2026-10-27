@@ -597,8 +597,8 @@ private struct HomeScreen: View {
                         .background(Style.hero,in:RoundedRectangle(cornerRadius:22))
                     }.buttonStyle(OmaPressButtonStyle())
                     Button { startTwin = true; showONE = true } label: {
-                        categoryRow("Моя квартира · 3D",
-                                    "Типовая трёшка 80 м² · 3D и размерная схема", "cube.transparent.fill")
+                        categoryRow("Моя квартира · фото",
+                                    "План 58,67 м² · реалистичные виды всех комнат", "photo.on.rectangle.angled")
                     }
                     .buttonStyle(OmaPressButtonStyle())
                     .accessibilityIdentifier("homeTwin.open")
@@ -991,7 +991,7 @@ private struct ProfileScreen: View {
                             Image(systemName:"house").font(.system(size:23))
                             VStack(alignment:.leading,spacing:3) {
                                 Text("OMA ONE · Мой дом").font(.system(size:17,weight:.bold))
-                                Text("Проекты, 3D-квартира и 8 демо-технологий").font(.system(size:12))
+                                Text("Проекты, квартира по плану и 8 демо-технологий").font(.system(size:12))
                             }
                             Spacer(); Image(systemName:"chevron.right")
                         }.padding(20).foregroundColor(.white).background(Style.hero,in:RoundedRectangle(cornerRadius:20))
@@ -1139,10 +1139,10 @@ private struct ONEHub: View {
                             .foregroundStyle(Style.blue)
                             .frame(width: 47, height: 52)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("OMA HOME TWIN · 3D")
+                            Text("OMA HOME TWIN · ФОТО")
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
                                 .foregroundStyle(Style.ink)
-                            Text("Смотрите типовую трёшку и прогресс ремонта")
+                            Text("Смотрите квартиру по плану и прогресс ремонта")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                         }
@@ -1383,7 +1383,7 @@ private struct ProjectsScreen: View {
             NavigationLink {
                 HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
             } label: {
-                Label("Открыть мою 3D-квартиру", systemImage: "cube.transparent.fill")
+                Label("Открыть визуализацию квартиры", systemImage: "photo.on.rectangle.angled")
                     .foregroundStyle(Style.blue)
                     .font(.system(size: 16, weight: .semibold))
             }

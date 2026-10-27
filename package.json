@@ -16,7 +16,7 @@
     "reset": "npm run build && node dist/scripts/reset.js",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
-    "test:proof": "npm run build && node --test dist/tests/proof-engine.test.js dist/tests/proof-api.test.js dist/tests/engine.test.js dist/tests/ios-evidence-bundle.test.js dist/tests/ios-native-static.test.js dist/tests/ui-static.test.js dist/tests/shelf-flow.test.js dist/tests/finance-domain.test.js dist/tests/banking-provider.test.js",
+    "test:proof": "npm run build && node --test dist/tests/proof-engine.test.js dist/tests/proof-api.test.js dist/tests/engine.test.js dist/tests/ios-evidence-bundle.test.js dist/tests/ios-native-static.test.js dist/tests/ui-static.test.js dist/tests/shelf-flow.test.js dist/tests/home-twin.test.js dist/tests/finance-domain.test.js dist/tests/banking-provider.test.js",
     "evidence": "npm run build && node dist/proof-server.js",
     "evidence:report": "npm run build && node dist/scripts/generate-evidence.js",
     "build:ios-evidence": "npm run build && node dist/scripts/build-ios-evidence.js",
