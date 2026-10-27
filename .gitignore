@@ -9,3 +9,6 @@ test-results/
 var/
 .oma-postgres/
 .taste-skill/
+# Local Xcode UI/workspace state; must not be shared
+**/xcuserdata/
+*.xcuserstate

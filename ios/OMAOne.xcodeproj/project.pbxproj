@@ -16,6 +16,7 @@
 		A10000000000000000000009 /* ShelfFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* ShelfFlow.swift */; };
 		A1000000000000000000000A /* HomeTwinModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* HomeTwinModel.swift */; };
 		A1000000000000000000000B /* HomeTwin3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* HomeTwin3DView.swift */; };
+		A1000000000000000000000C /* ServiceRequestModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* ServiceRequestModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		A20000000000000000000009 /* ShelfFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfFlow.swift; sourceTree = "<group>"; };
 		A2000000000000000000000A /* HomeTwinModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTwinModel.swift; sourceTree = "<group>"; };
 		A2000000000000000000000B /* HomeTwin3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTwin3DView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000C /* ServiceRequestModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceRequestModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +64,7 @@
 				A20000000000000000000009 /* ShelfFlow.swift */,
 				A2000000000000000000000A /* HomeTwinModel.swift */,
 				A2000000000000000000000B /* HomeTwin3DView.swift */,
+				A2000000000000000000000C /* ServiceRequestModel.swift */,
 				A20000000000000000000004 /* Info.plist */,
 				A20000000000000000000005 /* Assets.xcassets */,
 			);
@@ -154,6 +157,7 @@
 				A10000000000000000000009 /* ShelfFlow.swift in Sources */,
 				A1000000000000000000000A /* HomeTwinModel.swift in Sources */,
 				A1000000000000000000000B /* HomeTwin3DView.swift in Sources */,
+				A1000000000000000000000C /* ServiceRequestModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

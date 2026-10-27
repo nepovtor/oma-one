@@ -1,0 +1,79 @@
+name: OMA ONE quality gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oma-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-and-browser:
+    name: TypeScript, PostgreSQL, contract and E2E tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install PostgreSQL binaries for isolated integration tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+      - name: Verify available compilers
+        run: |
+          node --version
+          swiftc --version
+          /usr/lib/postgresql/16/bin/initdb --version
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run check:ios-evidence
+      - run: npm run test:proof
+      - run: npm test
+      - run: npm run test:e2e
+      - name: Publish E2E evidence when failing
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures
+          path: |
+            test-output/playwright
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 3
+
+  ios-simulator-build:
+    name: iOS 16+ simulator compile
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:ios-evidence
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Compile without signing
+        run: |
+          xcodebuild -project ios/OMAOne.xcodeproj \
+            -scheme OMAOne \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
