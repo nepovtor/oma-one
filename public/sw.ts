@@ -1,6 +1,6 @@
-const CACHE='oma-one-v7';
+const CACHE='oma-brand-v8';
 const PRODUCT_IMAGES=Array.from({length:28},(_,index)=>`/products/ProductP${String(index+1).padStart(2,'0')}.jpg`);
-const SHELL=['/','/index.html','/app.js','/api.js','/analytics.js','/state.js','/shelf.js','/evidence-engine.js','/styles.css','/manifest.webmanifest','/icons/icon.svg','/icons/icon-192.png','/icons/icon-512.png','/icons/apple-touch-icon.png',...PRODUCT_IMAGES];
+const SHELL=['/','/index.html','/app.js','/api.js','/analytics.js','/state.js','/shelf.js','/evidence-engine.js','/styles.css','/oma-brand.css','/manifest.webmanifest','/icons/icon.svg','/icons/oma-logo.jpg','/icons/icon-192.png','/icons/icon-512.png','/icons/apple-touch-icon.png',...PRODUCT_IMAGES];
 const worker=globalThis as unknown as ServiceWorkerGlobalScope;
 worker.addEventListener('install',(event: ExtendableEvent)=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>worker.skipWaiting())));
 worker.addEventListener('activate',(event: ExtendableEvent)=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>worker.clients.claim())));
