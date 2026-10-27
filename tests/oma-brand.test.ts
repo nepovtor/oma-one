@@ -40,6 +40,21 @@ test('OMA web screens use the supplied mark, no ONE display name, and functional
   fs.readFile(path.join(root,'public/icons/oma-logo.jpg'))
  ]);
  assert.deepEqual(webLogo,nativeLogo,'Web must use the same original OMA mark as iOS');
+ // Reject placeholders or the previous house icon. PNG files must be the
+ // expected size so iOS/PWA use real assets instead of browser fallbacks.
+ for(const [file,size] of [
+  ['public/icons/icon-192.png',192],
+  ['public/icons/icon-512.png',512],
+  ['public/icons/apple-touch-icon.png',180],
+  ['ios/OMAOne/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png',1024]
+ ] as const){
+  const png=await fs.readFile(path.join(root,file));
+  assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  assert.equal(png.readUInt32BE(16),size,file+' width');
+  assert.equal(png.readUInt32BE(20),size,file+' height');
+  assert.ok(png.length>350,file+' is unexpectedly small');
+ }
+
 });
 
 test('OMA iOS navigation and 3D remain linked after branding',async()=>{

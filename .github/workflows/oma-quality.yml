@@ -38,3 +38,19 @@ jobs:
         run: npm run check:ios-evidence
       - name: Chromium visual/contract E2E
         run: npm run test:e2e
+
+  ios-compile:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native iOS app for Simulator
+        run: |
+          xcodebuild \
+            -project ios/OMAOne.xcodeproj \
+            -scheme OMAOne \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
