@@ -16,6 +16,8 @@ private enum Style {
     static let paleCyan = Color(red: 0.898, green: 0.969, blue: 0.976)
     static let paleOrange = Color(red: 1.0, green: 0.953, blue: 0.910)
     static let line = Color(red: 0.882, green: 0.910, blue: 0.925)
+    static let canvas = Color(red: 0.965, green: 0.980, blue: 0.988)
+    static let tile = Color(red: 0.925, green: 0.965, blue: 0.982)
     static let hero = blue
 }
 
@@ -55,7 +57,7 @@ private struct ProductVisual: View {
     var body: some View {
         Group {
             if let image = UIImage(named: "Product\(product.id.uppercased())") {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(uiImage: image).resizable().scaledToFit().padding(8)
             } else {
                 Image(systemName: categorySymbol(product.category))
                     .font(.system(size: 31, weight: .light))
@@ -64,9 +66,23 @@ private struct ProductVisual: View {
             }
         }
         .frame(maxWidth: .infinity).frame(height: height)
-        .background(Style.paleBlue)
+        .background(Style.tile)
         .clipShape(RoundedRectangle(cornerRadius: radius))
         .accessibilityLabel("Иллюстрация: \(product.name)")
+    }
+}
+
+private struct FeaturedProductVisual: View {
+    let product: Product
+    var body: some View {
+        Image("FeaturedLaminate")
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: 218)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .accessibilityLabel("Промо-иллюстрация: \(product.name)")
     }
 }
 
@@ -102,9 +118,8 @@ private struct OmaGlassGroup<Content:View>:View {
 private struct OmaTabBarSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(.white, in: RoundedRectangle(cornerRadius: 26))
-            .overlay(RoundedRectangle(cornerRadius: 26)
-                .strokeBorder(Style.line.opacity(0.80), lineWidth: 1))
+            .background(.white)
+            .overlay(alignment: .top) { Rectangle().fill(Style.line).frame(height: 1) }
     }
 }
 
@@ -404,7 +419,6 @@ struct ContentView: View {
     }
     @StateObject private var store = Store()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var tabPill
     @State private var tab: Tab = .home
     @State private var showONE = false
     @State private var startPlanner = false
@@ -435,10 +449,13 @@ struct ContentView: View {
                         withAnimation(reduceMotion ? nil : OmaMotion.change) { tab = item }
                         if item == .catalog { category = nil }
                     } label: {
-                        VStack(spacing:5) {
+                        VStack(spacing:4) {
+                            Capsule()
+                                .fill(tab == item ? Style.cyan : .clear)
+                                .frame(width:22,height:3)
                             ZStack(alignment:.topTrailing) {
-                                Image(systemName:item.icon).font(.system(size:24,weight:.light))
-                                    .frame(width:39,height:29)
+                                Image(systemName:item.icon).font(.system(size:21,weight:tab == item ? .semibold : .regular))
+                                    .frame(width:36,height:25)
                                 if item == .cart && store.cartCount > 0 {
                                     Text("\(store.cartCount)").font(.system(size:9,weight:.bold))
                                         .foregroundColor(.white).padding(4).background(Style.blue).clipShape(Circle())
@@ -446,22 +463,17 @@ struct ContentView: View {
                                         .contentTransition(.numericText())
                                 }
                             }
-                            Text(item.title).font(.system(size:10,weight:tab == item ? .bold : .medium,design:.rounded)).lineLimit(1)
+                            Text(item.title).font(.system(size:10,weight:tab == item ? .bold : .medium)).lineLimit(1)
                         }
                         .foregroundColor(tab == item ? Style.blue : Style.ink)
-                        .frame(maxWidth:.infinity,minHeight:54)
-                        .background {
-                            if tab == item {
-                                Capsule().fill(Style.soft.opacity(0.8)).matchedGeometryEffect(id:"selectedTab",in:tabPill)
-                            }
-                        }
+                        .frame(maxWidth:.infinity,minHeight:58)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(OmaPressButtonStyle())
                     .accessibilityLabel(item.title)
                 }
             }
-            .padding(.horizontal,10).padding(.top,10).padding(.bottom,5)
+            .padding(.horizontal,8).padding(.top,4).padding(.bottom,4)
             .modifier(OmaTabBarSurface())
         }
         .preferredColorScheme(.light)
@@ -506,18 +518,8 @@ private struct BrandHeader: View {
             Image("OMALogoReference")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 99, height: 44)
+                .frame(width: 135, height: 60)
                 .accessibilityLabel("ОМА")
-            VStack(alignment: .leading, spacing: 2) {
-                Text("МОЙ ДОМ")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .tracking(1.4)
-                    .foregroundStyle(Style.blue)
-                Text("И РЕМОНТ")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(0.9)
-                    .foregroundStyle(.secondary)
-            }
             Spacer(minLength: 4)
             Menu {
                 ForEach(["Минск", "Гомель", "Брест", "Гродно", "Витебск", "Могилёв"], id: \.self) { city in
@@ -575,166 +577,105 @@ private struct HomeScreen: View {
     @Binding var category: String?
     @Binding var search: String
 
+    private var featured: Product { store.product("p27") ?? store.products[0] }
+    private var popular: [Product] { Array(store.products.prefix(6)) }
+
     var body: some View {
         VStack(spacing: 0) {
             BrandHeader(store: store)
-            SearchField(text: $search) {
-                category = nil
-                selectedTab = .catalog
-            }
-            .padding(.horizontal, 17)
-            .padding(.bottom, 14)
-            .background(.white)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Добро пожаловать домой")
-                            .font(.system(size: 23, weight: .bold, design: .rounded))
-                            .foregroundStyle(Style.ink)
-                        Text("Все задачи, материалы и проекты в одном месте")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    SearchField(text: $search) {
+                        category = nil
+                        selectedTab = .catalog
                     }
-                    .padding(.top, 5)
 
-                    Button {
-                        startTwin = true
-                        showONE = true
-                    } label: {
-                        HStack(alignment: .center, spacing: 13) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Style.paleCyan)
-                                Image(systemName: "cube.transparent.fill")
-                                    .font(.system(size: 33, weight: .light))
-                                    .foregroundStyle(Style.blue)
-                            }
-                            .frame(width: 66, height: 70)
-
-                            VStack(alignment: .leading, spacing: 5) {
-                                HStack(spacing: 6) {
-                                    Text("МОЯ КВАРТИРА · 3D")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .tracking(0.3)
-                                    Text("НОВОЕ")
-                                        .font(.system(size: 8, weight: .black))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 4)
-                                        .background(Style.paleCyan, in: Capsule())
+                    VStack(alignment:.leading,spacing:13) {
+                        sectionHeader("Для вашего дома", action:"Все") {
+                            category = nil; selectedTab = .catalog
+                        }
+                        ScrollView(.horizontal,showsIndicators:false) {
+                            HStack(spacing:14) {
+                                ForEach(store.categories.filter { item in store.products.contains { $0.category == item.name } }) { item in
+                                    let product = store.products.first { $0.category == item.name } ?? featured
+                                    Button { category = item.name; selectedTab = .catalog } label: {
+                                        VStack(spacing:7) {
+                                            ProductVisual(product:product,height:62,radius:31)
+                                                .frame(width:62).clipShape(Circle())
+                                            Text(item.name).font(.system(size:11,weight:.medium)).lineLimit(1)
+                                        }.frame(width:70).foregroundStyle(Style.ink)
+                                    }
                                 }
-                                Text("Видимый прогресс ремонта")
-                                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                                Text("Поворачивайте план, отмечайте сделанное")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(Style.blue)
-                        }
-                        .padding(13)
-                        .modifier(OmaCardSurface(radius: 20))
-                        .foregroundStyle(Style.ink)
-                    }
-                    .buttonStyle(OmaPressButtonStyle())
-                    .accessibilityIdentifier("homeTwin.open")
-
-                    HStack(spacing: 9) {
-                        miniBenefit("checkmark.shield", "Проверка", "Решений")
-                        miniBenefit("bag", "Покупки", "По задаче")
-                        miniBenefit("house", "Мой дом", "История")
-                    }
-                    .accessibilityElement(children: .contain)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Что ещё можно сделать?")
-                            .font(.system(size: 19, weight: .bold, design: .rounded))
-                            .foregroundStyle(Style.ink)
-                        Button {
-                            startPlanner = true
-                            showONE = true
-                        } label: {
-                            categoryRow("Починить смеситель", "Проверить детали и составить смету", "drop")
-                        }
-                        Button {
-                            category = nil
-                            selectedTab = .catalog
-                        } label: {
-                            categoryRow("Найти материалы", "Перейти в демонстрационный каталог", "square.grid.2x2")
-                        }
-                        if let latest = store.projects.first(where: { $0.shelf != nil }) {
-                            Button {
-                                startShelf = true
-                                showONE = true
-                            } label: {
-                                categoryRow("Вернуться к полке",
-                                            latest.completed ? "Выполнение записано" : "Черновик сохранён", "bookmark")
                             }
                         }
                     }
-                    .buttonStyle(OmaPressButtonStyle())
 
-                    Text("Неофициальный конкурсный прототип · цены, остатки и заказы демонстрационные")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
-                }
-                .padding(18)
-            }
-            .background(Style.soft)
+                    VStack(alignment:.leading,spacing:13) {
+                        sectionHeader("Популярное", action:"Каталог") {
+                            category = "Все товары"; selectedTab = .catalog
+                        }
+                        ZStack(alignment:.bottomLeading) {
+                            FeaturedProductVisual(product:featured)
+                            VStack(alignment:.leading,spacing:4) {
+                                Text(featured.name).font(.system(size:18,weight:.bold)).lineLimit(2)
+                                Text("Демо-цена · \(rub(featured.price))").font(.system(size:12))
+                            }
+                            .foregroundStyle(Style.ink).padding(17)
+                            .background(.white.opacity(0.94),in:RoundedRectangle(cornerRadius:16))
+                            .padding(12)
+                        }
+                    }
+
+                    VStack(alignment:.leading,spacing:13) {
+                        sectionHeader("Часто выбирают", action:"Все") {
+                            category = "Все товары"; selectedTab = .catalog
+                        }
+                        ScrollView(.horizontal,showsIndicators:false) {
+                            HStack(spacing:12) {
+                                ForEach(popular) { product in
+                                    ProductCard(p:product,store:store).frame(width:168)
+                                }
+                            }
+                        }
+                    }
+
+                    Button { startTwin = true; showONE = true } label: {
+                        HStack(spacing:14) {
+                            Image(systemName:"cube.transparent").font(.system(size:28,weight:.light)).foregroundStyle(Style.blue)
+                            VStack(alignment:.leading,spacing:4) {
+                                Text("МОЯ КВАРТИРА · 3D").font(.system(size:17,weight:.bold))
+                                Text("Смотрите прогресс домашних проектов").font(.system(size:12)).foregroundStyle(.secondary)
+                            }
+                            Spacer(); Image(systemName:"arrow.up.right").foregroundStyle(Style.blue)
+                        }.padding(17).modifier(OmaCardSurface(radius:20)).foregroundStyle(Style.ink)
+                    }.accessibilityIdentifier("homeTwin.open")
+
+                    Button { startPlanner = true; showONE = true } label: {
+                        HStack { Text("Решить задачу для дома").font(.system(size:16,weight:.semibold)); Spacer(); Image(systemName:"arrow.right") }
+                            .padding(.horizontal,18).frame(height:52).foregroundStyle(.white)
+                            .background(Style.blue,in:RoundedRectangle(cornerRadius:16))
+                    }
+
+                    Text("Неофициальный прототип · цены, наличие и заказы демонстрационные")
+                        .font(.system(size:11)).foregroundStyle(.secondary).frame(maxWidth:.infinity)
+                }.padding(.horizontal,18).padding(.bottom,24)
+            }.background(Style.canvas)
         }
     }
 
-    private func miniBenefit(_ symbol: String, _ title: String, _ subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Image(systemName: symbol)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Style.cyan)
-                .frame(height: 23)
-            Text(title)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Style.ink)
-            Text(subtitle)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+    private func sectionHeader(_ title:String,action:String,onTap:@escaping ()->Void) -> some View {
+        HStack {
+            Text(title).font(.system(size:20,weight:.bold)).foregroundStyle(Style.ink)
+            Spacer()
+            Button(action,action:onTap).font(.system(size:13,weight:.medium)).foregroundStyle(Style.blue)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .modifier(OmaCardSurface(radius: 16))
-    }
-
-    private func categoryRow(_ title: String, _ detail: String, _ symbol: String) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: symbol)
-                .font(.system(size: 21, weight: .medium))
-                .foregroundStyle(Style.blue)
-                .frame(width: 47, height: 47)
-                .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 13))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Style.blue)
-        }
-        .padding(13)
-        .modifier(OmaCardSurface(radius: 18))
-        .foregroundStyle(Style.ink)
     }
 }
 
 
 private struct ScreenTitle: View {
     let title:String
-    var body: some View { Text(title).font(.system(size:25,weight:.bold,design:.rounded)).foregroundColor(Style.ink).frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,18).frame(height:62).background(Style.soft) }
+    var body: some View { Text(title).font(.system(size:27,weight:.bold)).foregroundColor(Style.ink).frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,18).frame(height:66).background(Style.canvas) }
 }
 
 private struct CatalogScreen: View {
@@ -745,87 +686,64 @@ private struct CatalogScreen: View {
     private var availableCategories: [Category] {
         store.categories.filter { entry in store.products.contains { $0.category == entry.name } }
     }
+    private var results:[Product] {
+        store.products.filter { product in
+            let matchesCategory = category == nil || category == "Все товары" || product.category == category
+            let matchesQuery = search.isEmpty || (product.name + " " + product.category).localizedCaseInsensitiveContains(search)
+            return matchesCategory && matchesQuery
+        }
+    }
     var body: some View {
         VStack(spacing:0) {
-            HStack {
-                if category != nil {
-                    Button { category = nil; search = "" } label:{Image(systemName:"chevron.left").font(.headline).frame(width:34,height:44)}
-                        .accessibilityLabel("Назад к категориям")
-                }
-                Text(category ?? "Каталог").font(.system(size:25,weight:.bold,design:.rounded)).foregroundColor(Style.ink).lineLimit(1)
-                Spacer()
-            }.padding(.horizontal,18).frame(height:62).background(Style.soft)
-            ScrollView {
-                VStack(alignment:.leading,spacing:18) {
+            ScreenTitle(title:"Каталог")
+            ScrollView(showsIndicators:false) {
+                VStack(alignment:.leading,spacing:20) {
                     HStack(spacing:10) {
-                        Image(systemName:"magnifyingglass").foregroundColor(.gray)
+                        Image(systemName:"magnifyingglass").foregroundStyle(Style.ink.opacity(0.55))
                         TextField("Поиск по названию или категории",text:$search)
                             .font(.system(size:14)).submitLabel(.search)
                         if !search.isEmpty { Button { search="" } label:{Image(systemName:"xmark.circle.fill").foregroundColor(.gray)} }
-                    }.padding(.horizontal,14).frame(height:49).modifier(OmaCardSurface(radius:15))
-                    if category == nil && search.isEmpty {
-                        Button { category = "Все товары" } label: {
-                            HStack(spacing:14) {
-                                Image(systemName:"square.grid.2x2").font(.system(size:22)).frame(width:42)
-                                VStack(alignment:.leading,spacing:3) {
-                                    Text("Все товары").font(.system(size:17,weight:.semibold))
-                                    Text("\(productCountText(store.products.count)) в демо-каталоге").font(.system(size:12)).foregroundStyle(.secondary)
+                    }.padding(.horizontal,15).frame(height:50).modifier(OmaCardSurface(radius:25))
+
+                    ScrollView(.horizontal,showsIndicators:false) {
+                        HStack(spacing:10) {
+                            categoryButton("Все",product:store.products[0],selected:category == nil || category == "Все товары") { category = nil }
+                            ForEach(availableCategories) { entry in
+                                if let product = store.products.first(where: { $0.category == entry.name }) {
+                                    categoryButton(entry.name,product:product,selected:category == entry.name) { category = entry.name }
                                 }
-                                Spacer()
-                                Image(systemName:"arrow.right").font(.system(size:15,weight:.semibold))
-                            }.foregroundStyle(Style.ink).padding(16).modifier(OmaCardSurface(radius:20))
-                        }.buttonStyle(OmaPressButtonStyle())
-                        Text("Категории").font(.system(size:19,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        LazyVGrid(columns:grid,spacing:12) {
-                            ForEach(Array(availableCategories.dropLast().enumerated()),id:\.element.id) { index, entry in
-                                Button { category = entry.name } label: {
-                                    VStack(alignment:.leading,spacing:10) {
-                                        Image(systemName:categorySymbol(entry.name)).font(.system(size:24,weight:.medium))
-                                        Spacer(minLength:0)
-                                        Text(entry.name).font(.system(size:15,weight:.semibold,design:.rounded)).lineLimit(2)
-                                        Text(productCountText(store.products.filter { $0.category == entry.name }.count))
-                                            .font(.system(size:12)).foregroundStyle(Style.ink.opacity(0.7))
-                                    }
-                                    .frame(maxWidth:.infinity,minHeight:105,alignment:.leading).padding(15)
-                                    .foregroundStyle(Style.blue)
-                                    .background(index.isMultiple(of:2) ? Style.paleBlue : Style.paleOrange,in:RoundedRectangle(cornerRadius:20))
-                                }.buttonStyle(OmaPressButtonStyle())
                             }
                         }
-                        if let entry = availableCategories.last {
-                            Button { category = entry.name } label: {
-                                HStack(spacing:16) {
-                                    Image(systemName:categorySymbol(entry.name)).font(.system(size:25)).frame(width:38)
-                                    Text(entry.name).font(.system(size:16,weight:.semibold))
-                                    Spacer()
-                                    Text(productCountText(store.products.filter { $0.category == entry.name }.count)).font(.system(size:13))
-                                    Image(systemName:"chevron.right").font(.system(size:12,weight:.semibold))
-                                }.foregroundStyle(Style.blue).padding(16)
-                                    .background(Style.paleBlue,in:RoundedRectangle(cornerRadius:20))
-                            }.buttonStyle(OmaPressButtonStyle())
-                        }
+                    }
+
+                    HStack {
+                        Text(category ?? "Популярные товары").font(.system(size:20,weight:.bold)).foregroundStyle(Style.ink)
+                        Spacer()
+                        Text(productCountText(results.count)).font(.system(size:12)).foregroundStyle(.secondary)
+                    }
+                    if results.isEmpty {
+                        VStack(spacing:12) {
+                            Image(systemName:"magnifyingglass").font(.system(size:38,weight:.light)).foregroundColor(Style.blue)
+                            Text("В демо-каталоге ничего не найдено").font(.headline).multilineTextAlignment(.center)
+                            Button("Сбросить поиск") { category=nil; search="" }.foregroundColor(Style.blue)
+                        }.frame(maxWidth:.infinity).padding(.vertical,70)
                     } else {
-                        let results = store.products.filter { product in
-                            let matchesCategory = (category == nil || category == "Все товары" || product.category == category)
-                            let matchesQuery = search.isEmpty || (product.name + " " + product.category).localizedCaseInsensitiveContains(search)
-                            return matchesCategory && matchesQuery
-                        }
-                        Text("\(productCountText(results.count)) · демонстрационные данные")
-                            .font(.system(size:13)).foregroundStyle(.secondary)
-                        if results.isEmpty {
-                            VStack(spacing:12) {
-                                Image(systemName:"magnifyingglass").font(.system(size:42)).foregroundColor(Style.blue)
-                                Text("В демо-каталоге ничего не найдено").font(.headline).multilineTextAlignment(.center)
-                                Button("Показать категории") { category=nil; search="" }.foregroundColor(Style.blue)
-                            }.frame(maxWidth:.infinity).padding(.top,60)
-                        } else {
-                            LazyVGrid(columns:grid,spacing:13) { ForEach(results) { p in ProductCard(p:p,store:store) } }
-                        }
+                        LazyVGrid(columns:grid,spacing:13) { ForEach(results) { p in ProductCard(p:p,store:store) } }
                     }
                     Text("Цены и наличие — демонстрационные, заказ не оплачивается")
                         .font(.system(size:12)).foregroundStyle(.secondary).frame(maxWidth:.infinity)
-                }.padding(18)
-            }
+                }.padding(.horizontal,18).padding(.bottom,24)
+            }.background(Style.canvas)
+        }
+    }
+
+    private func categoryButton(_ title:String,product:Product,selected:Bool,action:@escaping ()->Void) -> some View {
+        Button(action:action) {
+            VStack(spacing:6) {
+                ProductVisual(product:product,height:58,radius:29).frame(width:58).clipShape(Circle())
+                    .overlay(Circle().strokeBorder(selected ? Style.cyan : .clear,lineWidth:2))
+                Text(title).font(.system(size:11,weight:selected ? .bold : .medium)).lineLimit(1)
+            }.frame(width:70).foregroundStyle(Style.ink)
         }
     }
 }
@@ -837,28 +755,33 @@ private struct ProductCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         VStack(alignment:.leading,spacing:10) {
-            Button { showingDetail = true } label: {
-                VStack(alignment:.leading,spacing:10) {
-                    ProductVisual(product:p,height:100)
-                    Text(p.name).font(.system(size:13,weight:.semibold)).foregroundStyle(Style.ink)
-                        .lineLimit(2).frame(height:37,alignment:.topLeading)
-                    Text(rub(p.price)).font(.system(size:18,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        .contentTransition(.numericText())
-                }.frame(maxWidth:.infinity,alignment:.leading)
-            }.buttonStyle(OmaPressButtonStyle())
-            HStack(spacing:8) {
-                AddToCartButton(p:p,store:store,compact:true)
+            ZStack(alignment:.topTrailing) {
+                Button { showingDetail = true } label: { ProductVisual(product:p,height:132,radius:18) }
+                    .buttonStyle(OmaPressButtonStyle())
                 Button { withAnimation(reduceMotion ? nil : OmaMotion.change) { store.toggleFavorite(p.id) } } label:{
                     Image(systemName:store.favorites.contains(p.id) ? "heart.fill" : "heart")
-                        .frame(width:42,height:42).foregroundColor(Style.orange)
-                        .background(Style.paleOrange,in:RoundedRectangle(cornerRadius:10))
-                        .scaleEffect(store.favorites.contains(p.id) && !reduceMotion ? 1.07 : 1)
-                }.accessibilityLabel(store.favorites.contains(p.id) ? "Убрать из избранного" : "Добавить в избранное")
+                        .font(.system(size:14,weight:.semibold)).frame(width:36,height:36)
+                        .foregroundColor(store.favorites.contains(p.id) ? Style.blue : Style.ink)
+                        .background(.white,in:Circle())
+                }.padding(8).accessibilityLabel(store.favorites.contains(p.id) ? "Убрать из избранного" : "Добавить в избранное")
             }
-        }.padding(12).frame(maxWidth:.infinity,alignment:.leading).modifier(OmaCardSurface(radius:20))
+            Button { showingDetail = true } label: {
+                VStack(alignment:.leading,spacing:5) {
+                    Text(p.name).font(.system(size:14,weight:.semibold)).foregroundStyle(Style.ink)
+                        .lineLimit(2).frame(height:38,alignment:.topLeading)
+                    Text(p.category).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1)
+                }.frame(maxWidth:.infinity,alignment:.leading)
+            }.buttonStyle(OmaPressButtonStyle())
+            HStack(alignment:.center) {
+                Text(rub(p.price)).font(.system(size:17,weight:.bold)).foregroundStyle(Style.ink)
+                    .contentTransition(.numericText())
+                Spacer(minLength:6)
+                AddToCartButton(p:p,store:store,compact:true)
+            }
+        }.padding(10).frame(maxWidth:.infinity,alignment:.leading).modifier(OmaCardSurface(radius:20))
             .sheet(isPresented:$showingDetail) {
                 NavigationStack { ProductDetailScreen(p:p,store:store) }
-                    .presentationDetents([.medium,.large])
+                    .presentationDetents([.large])
             }
     }
 }
@@ -882,16 +805,16 @@ private struct AddToCartButton: View {
                 confirmationSequence += 1
             }
         } label: {
-            HStack(spacing: compact ? 4 : 8) {
+            HStack(spacing: compact ? 0 : 8) {
                 if showingAdded { Image(systemName:"checkmark").fontWeight(.bold) }
-                Text(showingAdded ? "Добавлено" : compact ? "В корзину" : "Добавить в корзину")
-                    .lineLimit(1)
+                if !compact { Text(showingAdded ? "Добавлено" : "Добавить в корзину").lineLimit(1) }
+                if compact && !showingAdded { Image(systemName:"bag.badge.plus").fontWeight(.semibold) }
             }
             .font(.system(size:compact ? 12 : 16,weight:.semibold))
-            .frame(maxWidth:.infinity).frame(height:compact ? 42 : 52)
+            .frame(maxWidth:compact ? 42 : .infinity).frame(height:compact ? 42 : 52)
             .foregroundStyle(.white)
-            .background(showingAdded ? Style.blue.opacity(0.84) : Style.blue,
-                        in:RoundedRectangle(cornerRadius:compact ? 10 : 16))
+            .background(showingAdded ? Style.cyan : Style.blue,
+                        in:compact ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius:16)))
         }
         .buttonStyle(OmaPressButtonStyle())
         .disabled(atLimit)
@@ -912,35 +835,42 @@ private struct ProductDetailScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ScrollView {
-            VStack(alignment:.leading,spacing:20) {
-                ProductVisual(product:p,height:180,radius:22)
-                VStack(alignment:.leading,spacing:9) {
-                    Text(p.category).font(.system(size:13,weight:.medium)).foregroundStyle(.secondary)
-                    Text(p.name).font(.system(size:26,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                    Text(rub(p.price)).font(.system(size:26,weight:.bold,design:.rounded)).foregroundStyle(Style.blue)
-                    Text(p.description).font(.system(size:15)).foregroundStyle(Style.ink)
+        ScrollView(showsIndicators:false) {
+            VStack(alignment:.leading,spacing:22) {
+                ProductVisual(product:p,height:310,radius:28)
+                VStack(alignment:.leading,spacing:8) {
+                    Text(p.category).font(.system(size:13,weight:.medium)).foregroundStyle(Style.blue)
+                    Text(p.name).font(.system(size:28,weight:.bold)).foregroundStyle(Style.ink)
+                    HStack(alignment:.firstTextBaseline) {
+                        Text(rub(p.price)).font(.system(size:25,weight:.bold)).foregroundStyle(Style.blue)
+                        Spacer()
+                        Text("В наличии · демо").font(.system(size:12,weight:.medium)).foregroundStyle(.secondary)
+                    }
                 }
-                HStack {
-                    Text("Демонстрационное наличие")
-                    Spacer()
-                    Text("\(p.stock) шт.").fontWeight(.semibold)
-                }.font(.system(size:14)).padding(16).modifier(OmaCardSurface(radius:18))
-                Text("Учебный каталог: параметры, цена и остаток не подтверждены ОМА. Перед реальной покупкой проверьте характеристики и совместимость.")
+                VStack(alignment:.leading,spacing:10) {
+                    Text("О товаре").font(.system(size:17,weight:.bold))
+                    Text(p.description).font(.system(size:15)).foregroundStyle(Style.ink.opacity(0.82))
+                    HStack {
+                        Label("\(p.stock) шт.",systemImage:"shippingbox")
+                        Spacer()
+                        Text("Остаток синтетический").foregroundStyle(.secondary)
+                    }.font(.system(size:12))
+                }.padding(18).background(.white,in:RoundedRectangle(cornerRadius:20))
+                Text("Учебный каталог: характеристики, цена и остаток не подтверждены ОМА. Перед покупкой проверьте совместимость.")
                     .font(.system(size:12)).foregroundStyle(.secondary)
-            }.padding(18)
-        }.background(Style.soft)
+            }.padding(.horizontal,18).padding(.bottom,24)
+        }.background(Style.canvas)
             .safeAreaInset(edge:.bottom) {
                 HStack(spacing:12) {
                     Button { withAnimation(reduceMotion ? nil : OmaMotion.change) { store.toggleFavorite(p.id) } } label: {
                         Image(systemName:store.favorites.contains(p.id) ? "heart.fill" : "heart")
-                            .frame(width:52,height:52).foregroundStyle(Style.orange)
-                            .modifier(OmaCardSurface(radius:16))
+                            .frame(width:52,height:52).foregroundStyle(Style.blue)
+                            .background(.white,in:Circle()).overlay(Circle().strokeBorder(Style.line,lineWidth:1))
                     }.accessibilityLabel(store.favorites.contains(p.id) ? "Убрать из избранного" : "Добавить в избранное")
                     AddToCartButton(p:p,store:store)
                 }.padding(.horizontal,18).padding(.vertical,10).background(.white)
             }
-            .navigationTitle("Товар · демо").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("О товаре").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement:.topBarTrailing) { Button("Готово") { dismiss() } } }
     }
 }
@@ -965,7 +895,7 @@ private struct CartScreen: View {
                         .font(.system(size:15,weight:.semibold)).foregroundColor(.white)
                         .padding(.horizontal,22).frame(height:48).background(Style.blue,in:Capsule())
                     Spacer()
-                }.padding(.horizontal,24).frame(maxWidth:.infinity)
+                }.padding(.horizontal,24).frame(maxWidth:.infinity).background(Style.canvas)
             } else {
                 ScrollView {
                     LazyVStack(alignment:.leading,spacing:12) {
@@ -1000,7 +930,7 @@ private struct CartScreen: View {
                                 }.padding(14).modifier(OmaCardSurface(radius:20))
                             }
                         }
-                    }.padding(18)
+                    }.padding(.horizontal,18).padding(.bottom,18)
                 }
                 VStack(spacing:12) {
                     HStack {Text("Итого").font(.system(size:16));Spacer();Text(rub(store.cartTotal)).font(.system(size:22,weight:.bold,design:.rounded)).contentTransition(.numericText())}
@@ -1012,7 +942,7 @@ private struct CartScreen: View {
                     Button("Оформить") { store.checkout() }
                 } message: { Text("Это конкурсный прототип, оплата и доставка не выполняются.") }
             }
-        }
+        }.background(Style.canvas)
     }
 }
 
@@ -1035,13 +965,13 @@ private struct FavoritesScreen: View {
                         .font(.system(size:15,weight:.semibold)).foregroundColor(.white)
                         .padding(.horizontal,22).frame(height:48).background(Style.blue,in:Capsule())
                     Spacer()
-                }.padding(.horizontal,17).frame(maxWidth:.infinity)
+                }.padding(.horizontal,17).frame(maxWidth:.infinity).background(Style.canvas)
             } else {
                 ScrollView { LazyVGrid(columns:grid,spacing:14) {
                     ForEach(store.products.filter{store.favorites.contains($0.id)}) {p in ProductCard(p:p,store:store)}
-                }.padding(17) }
+                }.padding(17) }.background(Style.canvas)
             }
-        }
+        }.background(Style.canvas)
     }
 }
 
@@ -1059,20 +989,24 @@ private struct ProfileScreen: View {
             ScreenTitle(title:"Профиль")
             ScrollView {
                 VStack(alignment:.leading,spacing:14) {
-                    HStack {
-                        Text("Демонстрационный профиль").font(.system(size:15,weight:.medium))
+                    HStack(spacing:14) {
+                        Text(String(store.demoUserName.prefix(1))).font(.system(size:22,weight:.bold)).foregroundStyle(.white)
+                            .frame(width:54,height:54).background(Style.blue,in:Circle())
+                        VStack(alignment:.leading,spacing:4) {
+                            Text(store.demoUserName).font(.system(size:20,weight:.bold)).foregroundStyle(Style.ink)
+                            Text("Демонстрационный профиль · \(store.city)").font(.system(size:12)).foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        Text("\(store.demoUserName)").font(.subheadline.bold()).foregroundColor(Style.blue)
-                    }.padding(18).modifier(OmaCardSurface(radius:18))
+                    }.padding(18).modifier(OmaCardSurface(radius:22))
                     Button {showONE = true} label: {
                         HStack {
-                            Image(systemName:"house").font(.system(size:23))
+                            Image(systemName:"house").font(.system(size:23)).foregroundStyle(Style.blue)
                             VStack(alignment:.leading,spacing:3) {
                                 Text("ОМА · Мой дом").font(.system(size:17,weight:.bold))
                                 Text("Проекты, 3D-квартира и 8 демо-технологий").font(.system(size:12))
                             }
                             Spacer(); Image(systemName:"chevron.right")
-                        }.padding(20).foregroundColor(.white).background(Style.hero,in:RoundedRectangle(cornerRadius:20))
+                        }.padding(20).foregroundColor(Style.ink).background(Style.paleBlue,in:RoundedRectangle(cornerRadius:20))
                     }
                     Text("Личный кабинет").font(.system(size:19,weight:.bold,design:.rounded)).foregroundColor(Style.ink).padding(.top,12)
                     profileRow("История заказов","list.bullet.rectangle") {showingHistory=true}
@@ -1083,7 +1017,7 @@ private struct ProfileScreen: View {
                         .font(.system(size:12)).foregroundColor(.secondary).frame(maxWidth:.infinity).padding(.top,12)
                 }.padding(16)
             }
-        }.sheet(isPresented:$showingSettings) {
+        }.background(Style.canvas).sheet(isPresented:$showingSettings) {
             NavigationStack {
                 Form {
                     Section("Профиль") {TextField("Имя",text:$store.demoUserName)}
@@ -1931,7 +1865,7 @@ private struct ShelfFlowScreen: View {
             ForEach(0..<ShelfProjectData.steps.count, id: \.self) { index in
                 let step = ShelfProjectData.steps[index]
                 let done = draft.completedStepIDs.contains(step.id)
-                let available = done || (EvidenceEngine.shared.canCompleteShelfStep(draft.completedStepIDs, stepID: step.id) ?? false)
+                let available = done || EvidenceEngine.shared.canCompleteShelfStep(draft.completedStepIDs, stepID: step.id)
                 Button {
                     draft.completedStepIDs = EvidenceEngine.shared
                         .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs

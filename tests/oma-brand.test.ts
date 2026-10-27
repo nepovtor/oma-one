@@ -23,26 +23,36 @@ test('OMA web screens use the supplied mark, no ONE display name, and functional
  assert.match(app,/class="home-intro oma-home-intro"/);
  assert.doesNotMatch(app,/oma-featured-project/);
  assert.doesNotMatch(app,/01 · Опишите задачу|02 · Проверьте решение/);
- assert.match(app,/03 · Сохраните результат/);
+ assert.doesNotMatch(app,/03 · Сохраните результат/);
  assert.match(app,/data-action="start-shelf"/);
  assert.match(app,/data-view="planner"/);
  assert.match(app,/data-view="cart"/);
  assert.match(app,/data-view="profile"/);
  assert.match(app,/aria-current="page"/);
  assert.match(app,/src="\/icons\/oma-logo\.jpg"/);
+ assert.doesNotMatch(app,/Ваш дом\. Ваши решения\.|Мой дом и ремонт/);
+ assert.match(app,/\/products\/FeaturedLaminate\.png/);
  assert.match(css,/--brand-cyan:#[0-9a-f]{6}/);
  assert.match(css,/\.home-copy\.oma-hero/);
+ assert.match(css,/body \{[^}]*font-size:15px/);
+ assert.match(css,/\.nav-item \{[^}]*min-height:44px[^}]*font-size:14px/);
+ assert.match(css,/\.btn \{[^}]*min-height:44px[^}]*font-size:14px/);
+ assert.match(css,/\.task-showcase button:first-child \{[^}]*grid-row:1\/3/);
+ assert.match(css,/\.feature-grid\.compact \{[^}]*grid-template-columns:repeat\(2/);
+ assert.match(css,/@media\(min-width:1600px\)/);
  assert.match(css,/max-width:480px/);
  assert.match(css,/prefers-reduced-motion/);
  assert.match(css,/prefers-contrast:more/);
  assert.match(build,/public\/oma-brand\.css/);
  assert.match(sw,/\/oma-brand\.css/);
  assert.match(sw,/\/icons\/oma-logo\.jpg/);
+ assert.match(sw,/\/products\/FeaturedLaminate\.png/);
  const [nativeLogo,webLogo]=await Promise.all([
   fs.readFile(path.join(root,'ios/OMAOne/Assets.xcassets/OMALogoReference.imageset/OMALogoReference.jpg')),
   fs.readFile(path.join(root,'public/icons/oma-logo.jpg'))
  ]);
  assert.deepEqual(webLogo,nativeLogo,'Web must use the same original OMA mark as iOS');
+ await fs.access(path.join(root,'public/products/FeaturedLaminate.png'));
  // Reject placeholders or the previous house icon. PNG files must be the
  // expected size so iOS/PWA use real assets instead of browser fallbacks.
  for(const [file,size] of [
@@ -69,9 +79,18 @@ test('OMA iOS navigation and 3D remain linked after branding',async()=>{
  ]);
  assert.match(plist,/<key>CFBundleDisplayName<\/key>\s*<string>ОМА · Дом<\/string>/);
  assert.match(ui,/Image\("OMALogoReference"\)/);
+ assert.doesNotMatch(ui,/Text\("МОЙ ДОМ"\)|Text\("И РЕМОНТ"\)|Text\("Здравствуйте,"\)/);
+ assert.match(ui,/static let canvas = Color/);
+ assert.match(ui,/sectionHeader\("Популярное"/);
+ assert.match(ui,/sectionHeader\("Часто выбирают"/);
+ assert.match(ui,/ProductVisual\(product:p,height:132/);
+ assert.match(ui,/ProductVisual\(product:p,height:310/);
+ assert.match(ui,/Image\("FeaturedLaminate"\)/);
+ assert.match(ui,/store\.product\("p27"\)/);
+ assert.match(ui,/Capsule\(\)\s*\.fill\(tab == item \? Style\.cyan/);
  assert.match(ui,/МОЯ КВАРТИРА · 3D/);
  assert.doesNotMatch(ui,/oma\.home\.startShelf/);
- assert.match(ui,/startShelf = true/);
+ assert.doesNotMatch(ui,/startShelf = true/);
  assert.match(ui,/startTwin = true/);
  assert.match(ui,/HomeTwin3DView\(shelfEvidence:/);
  assert.match(twin,/SceneView\(/);
