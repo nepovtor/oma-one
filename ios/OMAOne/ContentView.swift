@@ -2588,7 +2588,7 @@ private struct ServiceRequestScreen: View {
         .background(Style.soft)
         .navigationTitle("Запрос услуги · демо")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("OMA ONE", isPresented: $showingConfirmation) {
+        .alert("ОМА", isPresented: $showingConfirmation) {
             Button("Понятно", role: .cancel) { showingConfirmation = false }
         } message: {
             Text(feedback)
