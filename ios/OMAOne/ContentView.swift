@@ -5,13 +5,17 @@ import CryptoKit
 
 // MARK: - Demo styling. User supplied reference screenshots are for a hackathon concept, not an official OMA release.
 private enum Style {
-    static let blue = Color(red: 0.05, green: 0.29, blue: 0.69)
-    static let orange = Color(red: 0.94, green: 0.35, blue: 0.08)
-    static let ink = Color(red: 0.08, green: 0.13, blue: 0.20)
-    static let soft = Color(red: 0.96, green: 0.97, blue: 0.99)
-    static let paleBlue = Color(red: 0.88, green: 0.94, blue: 1.0)
-    static let paleOrange = Color(red: 1.0, green: 0.93, blue: 0.87)
-    static let line = Color(red: 0.88, green: 0.90, blue: 0.93)
+    // Палитра основана на корпоративных материалах ОМА; проект неофициальный.
+    static let blue = Color(red: 0.188, green: 0.169, blue: 0.482)
+    static let deepBlue = Color(red: 0.133, green: 0.129, blue: 0.359)
+    static let cyan = Color(red: 0.074, green: 0.675, blue: 0.761)
+    static let orange = Color(red: 0.949, green: 0.412, blue: 0.29)
+    static let ink = Color(red: 0.125, green: 0.133, blue: 0.231)
+    static let soft = Color(red: 0.961, green: 0.965, blue: 0.984)
+    static let paleBlue = Color(red: 0.927, green: 0.925, blue: 0.984)
+    static let paleCyan = Color(red: 0.886, green: 0.980, blue: 0.988)
+    static let paleOrange = Color(red: 1.0, green: 0.939, blue: 0.910)
+    static let line = Color(red: 0.886, green: 0.890, blue: 0.938)
     static let hero = blue
 }
 
@@ -81,17 +85,13 @@ private func productCountText(_ count: Int) -> String {
 }
 
 private struct OmaCardSurface: ViewModifier {
-    var radius:CGFloat = 19
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    var radius: CGFloat = 19
     func body(content: Content) -> some View {
-        if reduceTransparency {
-            content.background(.white,in:RoundedRectangle(cornerRadius:radius))
-        } else if #available(iOS 26, *) {
-            content.glassEffect(.regular.tint(Style.soft.opacity(0.35)).interactive(),in:.rect(cornerRadius:radius))
-        } else {
-            content.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:radius))
-                .overlay(RoundedRectangle(cornerRadius:radius).strokeBorder(.white.opacity(0.65)))
-        }
+        content
+            .background(.white, in: RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius)
+                .strokeBorder(Style.line, lineWidth: 1))
+            .shadow(color: Style.blue.opacity(0.045), radius: 10, y: 3)
     }
 }
 
@@ -103,16 +103,12 @@ private struct OmaGlassGroup<Content:View>:View {
     }
 }
 
-private struct OmaTabBarSurface:ViewModifier {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    func body(content:Content)->some View {
-        if reduceTransparency {
-            content.background(.white,in:RoundedRectangle(cornerRadius:26))
-        } else if #available(iOS 26, *) {
-            content.glassEffect(.regular.tint(Style.soft.opacity(0.2)),in:.rect(cornerRadius:26))
-        } else {
-            content.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:26))
-        }
+private struct OmaTabBarSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(.white, in: RoundedRectangle(cornerRadius: 26))
+            .overlay(RoundedRectangle(cornerRadius: 26)
+                .strokeBorder(Style.line.opacity(0.80), lineWidth: 1))
     }
 }
 
@@ -494,7 +490,7 @@ struct ContentView: View {
                     } else {
                         VStack(spacing:14) {
                             Image(systemName:"network.badge.shield.half.filled").font(.system(size:44)).foregroundColor(Style.blue)
-                            Text("Укажи адрес сервера OMA ONE в профиле").font(.headline).multilineTextAlignment(.center)
+                            Text("Укажи адрес сервера ОМА в профиле").font(.headline).multilineTextAlignment(.center)
                             Text("Нативное приложение и все восемь демо-модулей работают без сервера. Полная серверная платформа подключается отдельно.").foregroundColor(.secondary).multilineTextAlignment(.center)
                         }.padding(30)
                     }
@@ -509,22 +505,49 @@ struct ContentView: View {
 // MARK: - Original mobile shell / screenshot inspired UI
 private struct BrandHeader: View {
     @ObservedObject var store: Store
+
     var body: some View {
-        HStack {
-            Image("OMALogoReference").resizable().scaledToFit().frame(width:67,height:37)
-            Spacer()
+        HStack(spacing: 10) {
+            Image("OMALogoReference")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 99, height: 44)
+                .accessibilityLabel("ОМА")
+            VStack(alignment: .leading, spacing: 2) {
+                Text("МОЙ ДОМ")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .tracking(1.4)
+                    .foregroundStyle(Style.blue)
+                Text("И РЕМОНТ")
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.9)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
             Menu {
-                ForEach(["Минск","Гомель","Брест","Гродно","Витебск","Могилёв"],id:\.self) { city in
+                ForEach(["Минск", "Гомель", "Брест", "Гродно", "Витебск", "Могилёв"], id: \.self) { city in
                     Button(city) { store.city = city }
                 }
             } label: {
-                HStack(spacing:6) {
-                    Image(systemName:"location.north.fill").font(.system(size:15))
-                    Text(store.city).font(.system(size:16)).foregroundColor(.black)
-                    Image(systemName:"chevron.right").font(.system(size:12,weight:.bold))
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 13, weight: .medium))
+                    Text(store.city)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
                 }
-            }.tint(.black)
-        }.padding(.horizontal,18).frame(height:64).background(.white)
+                .foregroundStyle(Style.blue)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 39)
+                .background(Style.paleBlue, in: Capsule())
+            }
+            .accessibilityLabel("Город: \(store.city)")
+        }
+        .padding(.horizontal, 17)
+        .frame(height: 76)
+        .background(.white)
     }
 }
 
@@ -556,97 +579,227 @@ private struct HomeScreen: View {
     @Binding var selectedTab: Tab
     @Binding var category: String?
     @Binding var search: String
+
     var body: some View {
-        VStack(spacing:0) {
-            BrandHeader(store:store)
-            SearchField(text:$search) { category = nil; selectedTab = .catalog }
-                .padding(.horizontal,17).padding(.bottom,16)
-                .background(Color.white)
+        VStack(spacing: 0) {
+            BrandHeader(store: store)
+            SearchField(text: $search) {
+                category = nil
+                selectedTab = .catalog
+            }
+            .padding(.horizontal, 17)
+            .padding(.bottom, 14)
+            .background(.white)
+
             ScrollView {
-                VStack(alignment:.leading,spacing:22) {
-                    VStack(alignment:.leading,spacing:5) {
-                        Text("Что хотите сделать дома?")
-                            .font(.system(size:25,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        Text("Начните с задачи — подскажем шаги и покупки")
-                            .font(.system(size:14)).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Добро пожаловать домой")
+                            .font(.system(size: 23, weight: .bold, design: .rounded))
+                            .foregroundStyle(Style.ink)
+                        Text("Все задачи, материалы и проекты в одном месте")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
                     }
-                    Button { startShelf = true; showONE = true } label: {
-                        VStack(alignment:.leading,spacing:13) {
-                            HStack {
-                                Text("OMA ONE · Начать с задачи").font(.system(size:14,weight:.semibold))
+                    .padding(.top, 5)
+
+                    Button {
+                        startShelf = true
+                        showONE = true
+                    } label: {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 7) {
+                                Image(systemName: "house.fill")
+                                Text("СЕРВИС ОМА")
+                                    .tracking(1.1)
                                 Spacer()
-                                Image(systemName:"arrow.up.right").font(.system(size:15,weight:.semibold))
+                                Image(systemName: "arrow.up.right")
                             }
-                            Text("Хочу повесить полку")
-                                .font(.system(size:24,weight:.bold,design:.rounded))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Style.paleCyan)
+
+                            Text("Ремонт начинается\nс хорошего плана")
+                                .font(.system(size: 27, weight: .bold, design: .rounded))
                                 .multilineTextAlignment(.leading)
-                            Text("Уточним стену и нагрузку, проверим крепёж, соберём список покупок")
-                                .font(.system(size:14)).foregroundStyle(.white.opacity(0.84))
-                            HStack {
-                                Text("Проверить монтаж").font(.system(size:14,weight:.bold))
-                                Image(systemName:"arrow.right").font(.system(size:13,weight:.bold))
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Text("Уточним задачу, проверим материалы и поможем не покупать лишнего.")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.white.opacity(0.88))
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            HStack(alignment: .bottom, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 9) {
+                                    Text("НАЧАТЬ С ЗАДАЧИ")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .tracking(0.5)
+                                        .foregroundStyle(.white.opacity(0.72))
+                                    HStack(spacing: 7) {
+                                        Text("Повесить полку")
+                                        Image(systemName: "arrow.right")
+                                    }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(Style.deepBlue)
+                                    .padding(.horizontal, 13)
+                                    .frame(minHeight: 40)
+                                    .background(Style.paleCyan, in: Capsule())
+                                }
+                                Spacer(minLength: 0)
+                                Image("ProductP07")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 96, height: 96)
+                                    .padding(7)
+                                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 18))
+                                    .accessibilityHidden(true)
                             }
-                            .foregroundStyle(Style.blue).padding(.horizontal,15).frame(height:38)
-                            .background(.white,in:Capsule())
                         }
-                        .frame(maxWidth:.infinity,alignment:.leading).padding(20)
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .foregroundStyle(.white)
-                        .background(Style.hero,in:RoundedRectangle(cornerRadius:22))
-                    }.buttonStyle(OmaPressButtonStyle())
-                    Button { startTwin = true; showONE = true } label: {
-                        categoryRow("Моя квартира · 3D",
-                                    "Типовая трёшка 80 м² · 3D и размерная схема", "cube.transparent.fill")
+                        .background(
+                            LinearGradient(colors: [Style.deepBlue, Style.blue],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: 24)
+                        )
+                    }
+                    .buttonStyle(OmaPressButtonStyle())
+                    .accessibilityIdentifier("oma.home.startShelf")
+
+                    Button {
+                        startTwin = true
+                        showONE = true
+                    } label: {
+                        HStack(alignment: .center, spacing: 13) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Style.paleCyan)
+                                Image(systemName: "cube.transparent.fill")
+                                    .font(.system(size: 33, weight: .light))
+                                    .foregroundStyle(Style.blue)
+                            }
+                            .frame(width: 66, height: 70)
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 6) {
+                                    Text("МОЯ КВАРТИРА · 3D")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .tracking(0.3)
+                                    Text("НОВОЕ")
+                                        .font(.system(size: 8, weight: .black))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 4)
+                                        .background(Style.paleCyan, in: Capsule())
+                                }
+                                Text("Видимый прогресс ремонта")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                Text("Поворачивайте план, отмечайте сделанное")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Style.blue)
+                        }
+                        .padding(13)
+                        .modifier(OmaCardSurface(radius: 20))
+                        .foregroundStyle(Style.ink)
                     }
                     .buttonStyle(OmaPressButtonStyle())
                     .accessibilityIdentifier("homeTwin.open")
 
-                    VStack(alignment:.leading,spacing:12) {
-                        Text("Ещё задачи")
-                            .font(.system(size:19,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        Button { startPlanner = true; showONE = true } label: {
-                            categoryRow("Починить смеситель","Проверить детали и составить смету","drop")
-                        }.buttonStyle(OmaPressButtonStyle())
-                        Button { category = nil; selectedTab = .catalog } label: {
-                            categoryRow("Найти материалы","Открыть демонстрационный каталог","square.grid.2x2")
-                        }.buttonStyle(OmaPressButtonStyle())
+                    HStack(spacing: 9) {
+                        miniBenefit("checkmark.shield", "Проверка", "Решений")
+                        miniBenefit("bag", "Покупки", "По задаче")
+                        miniBenefit("house", "Мой дом", "История")
                     }
-                    if let latest = store.projects.first(where: { $0.shelf != nil }) {
-                        Button { startShelf = true; showONE = true } label: {
-                            categoryRow("Вернуться к полке",latest.completed ? "Запись о выполнении" : "Черновик сохранён", "bookmark")
-                        }.buttonStyle(OmaPressButtonStyle())
+                    .accessibilityElement(children: .contain)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Что ещё можно сделать?")
+                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                            .foregroundStyle(Style.ink)
+                        Button {
+                            startPlanner = true
+                            showONE = true
+                        } label: {
+                            categoryRow("Починить смеситель", "Проверить детали и составить смету", "drop")
+                        }
+                        Button {
+                            category = nil
+                            selectedTab = .catalog
+                        } label: {
+                            categoryRow("Найти материалы", "Перейти в демонстрационный каталог", "square.grid.2x2")
+                        }
+                        if let latest = store.projects.first(where: { $0.shelf != nil }) {
+                            Button {
+                                startShelf = true
+                                showONE = true
+                            } label: {
+                                categoryRow("Вернуться к полке",
+                                            latest.completed ? "Выполнение записано" : "Черновик сохранён", "bookmark")
+                            }
+                        }
                     }
-                    Text("Неофициальный конкурсный прототип · данные демонстрационные")
-                        .font(.system(size:12)).foregroundStyle(.secondary)
+                    .buttonStyle(OmaPressButtonStyle())
+
+                    Text("Неофициальный конкурсный прототип · цены, остатки и заказы демонстрационные")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
                 }
                 .padding(18)
             }
             .background(Style.soft)
         }
     }
-    private func quickAction(_ title:String,_ symbol:String,accent:Color,action:@escaping ()->Void) -> some View {
-        Button(action:action) {
-            VStack(alignment:.leading,spacing:14) {
-                Image(systemName:symbol).font(.system(size:22,weight:.medium)).foregroundStyle(accent)
-                Text(title).font(.system(size:15,weight:.semibold,design:.rounded)).lineLimit(1)
-            }
-            .frame(maxWidth:.infinity,minHeight:66,alignment:.leading)
-            .padding(16).modifier(OmaCardSurface(radius:20))
-            .foregroundStyle(Style.ink)
-        }.buttonStyle(OmaPressButtonStyle())
+
+    private func miniBenefit(_ symbol: String, _ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Style.cyan)
+                .frame(height: 23)
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Style.ink)
+            Text(subtitle)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .modifier(OmaCardSurface(radius: 16))
     }
-    private func categoryRow(_ title:String,_ detail:String,_ symbol:String) -> some View {
-        HStack(spacing:15) {
-            Image(systemName:symbol).font(.system(size:23,weight:.medium))
-                .foregroundStyle(Style.blue).frame(width:38,height:38)
-            VStack(alignment:.leading,spacing:4) {
-                Text(title).font(.system(size:16,weight:.bold,design:.rounded))
-                Text(detail).font(.system(size:12)).foregroundStyle(.secondary)
+
+    private func categoryRow(_ title: String, _ detail: String, _ symbol: String) -> some View {
+        HStack(spacing: 13) {
+            Image(systemName: symbol)
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(Style.blue)
+                .frame(width: 47, height: 47)
+                .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 13))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
-            Spacer(minLength:0)
-            Image(systemName:"chevron.right").font(.system(size:12,weight:.bold)).foregroundStyle(Style.blue)
-        }.padding(14).modifier(OmaCardSurface(radius:20)).foregroundStyle(Style.ink)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Style.blue)
+        }
+        .padding(13)
+        .modifier(OmaCardSurface(radius: 18))
+        .foregroundStyle(Style.ink)
     }
 }
+
 
 private struct ScreenTitle: View {
     let title:String
@@ -984,7 +1137,7 @@ private struct ProfileScreen: View {
                         HStack {
                             Image(systemName:"house").font(.system(size:23))
                             VStack(alignment:.leading,spacing:3) {
-                                Text("OMA ONE · Мой дом").font(.system(size:17,weight:.bold))
+                                Text("ОМА · Мой дом").font(.system(size:17,weight:.bold))
                                 Text("Проекты, 3D-квартира и 8 демо-технологий").font(.system(size:12))
                             }
                             Spacer(); Image(systemName:"chevron.right")
@@ -1027,7 +1180,7 @@ private struct ProfileScreen: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment:.leading,spacing:16) {
-                        Text("OMA ONE помогает пройти путь от домашней задачи до плана и демонстрационной корзины.")
+                        Text("ОМА помогает пройти путь от домашней задачи до плана и демонстрационной корзины.")
                             .font(.system(size:19,weight:.semibold,design:.rounded))
                         Text("Восемь модулей показывают проверяемые учебные сценарии. Каталог, цены, наличие, услуги и заказы не связаны с официальными системами ОМА.")
                         Text("Нативные сценарии работают без сервера. Для расширенной версии и лаборатории расчётов адреса можно указать в разделе «Моя информация».")
@@ -1046,7 +1199,7 @@ private struct ProfileScreen: View {
     }
 }
 
-// MARK: - OMA ONE native feature hub, backed by persistent demo state
+// MARK: - ОМА native feature hub, backed by persistent demo state
 private enum ONEFeature: String, CaseIterable, Identifiable {
     case zerobuy, antifail, domino, synccity, proof, dna, forge, pulse
     var id:String{rawValue}
@@ -1103,7 +1256,7 @@ private struct ONEHub: View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
                 VStack(alignment:.leading,spacing:13) {
-                    Text("OMA ONE · Мой дом").font(.system(size:14,weight:.semibold))
+                    Text("ОМА · Мой дом").font(.system(size:14,weight:.semibold))
                     Text("От задачи к готовому плану")
                         .font(.system(size:25,weight:.bold,design:.rounded)).fixedSize(horizontal:false,vertical:true)
                     Text("Подберите материалы, проверьте ограничения и сохраните проект.")
@@ -1216,7 +1369,7 @@ private struct ONEHub: View {
                     .font(.system(size:11)).foregroundColor(.secondary)
             }.padding(16)
         }.background(Style.soft)
-            .navigationTitle("OMA ONE").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("ОМА").navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented:$startPlanner) {
                 PlannerScreen(store:store,showONE:$showONE,selectedTab:$selectedTab)
             }
@@ -1451,11 +1604,11 @@ private struct FeatureScreen: View {
                     }
                 }
             }
-            Section(footer:Text("OMA ONE · рабочий нативный демонстрационный сценарий. Сведения о ценах, соседях, ремонтах и неисправностях являются тестовыми.")) {EmptyView()}
+            Section(footer:Text("ОМА · рабочий нативный демонстрационный сценарий. Сведения о ценах, соседях, ремонтах и неисправностях являются тестовыми.")) {EmptyView()}
         }
         .scrollContentBackground(.hidden).background(Style.soft)
         .navigationTitle(feature.title).navigationBarTitleDisplayMode(.inline)
-        .alert("OMA ONE",isPresented:Binding(get:{!status.isEmpty},set:{if !$0 {status=""}})) {Button("ОК",role:.cancel){status=""}} message:{Text(status)}
+        .alert("ОМА",isPresented:Binding(get:{!status.isEmpty},set:{if !$0 {status=""}})) {Button("ОК",role:.cancel){status=""}} message:{Text(status)}
     }
     private var evidenceInput:[String:Any]? {
         switch feature {
@@ -1839,7 +1992,7 @@ private struct ShelfFlowScreen: View {
             }.padding(.horizontal, 18).padding(.vertical, 10).background(.white)
         }
         .navigationTitle("Повесить полку").navigationBarTitleDisplayMode(.inline)
-        .alert("OMA ONE", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
+        .alert("ОМА", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
             Button("Понятно", role: .cancel) { message = "" }
         } message: { Text(message) }
         .onChange(of: selectedPhoto) { item in

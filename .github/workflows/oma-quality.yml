@@ -1,0 +1,40 @@
+name: OMA quality · web and contracts
+on:
+  push:
+    branches:
+      - main
+      - feature/oma-brand-ui
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node-contracts-and-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install PostgreSQL binaries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql
+          PG_BIN="$(find /usr/lib/postgresql -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)/bin"
+          echo "$PG_BIN" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript check
+        run: npm run typecheck
+      - name: Full backend, brand and unit test suite
+        run: npm test
+      - name: Validate embedded iOS evidence bundle
+        run: npm run check:ios-evidence
+      - name: Chromium visual/contract E2E
+        run: npm run test:e2e

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ru</string>
 	<key>CFBundleDisplayName</key>
-	<string>OMA ONE</string>
+	<string>ОМА · Дом</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>ОМА</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -36,7 +36,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Камера используется для добавления фотографии результата в Proof.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>OMA ONE подключается к локальному серверу пилота на этом Mac.</string>
+	<string>ОМА подключается к локальному серверу пилота на этом Mac.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Фотографии используются только для подтверждения выполненного проекта.</string>
 	<key>OMAOneBaseURL</key>

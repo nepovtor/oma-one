@@ -2,3 +2,5 @@
 
 /* ОМА — переиспользуемая палитра и повышенная читаемость лаборатории. */
 .top{border-bottom-color:#e3e2ef}.hero{background:linear-gradient(120deg,#242164,#37328a 66%,#13a7bc)}.logo{color:#302b7b;letter-spacing:-1px}.nav button{border-radius:16px}.nav button.active{background:#efedfc;border-color:#c7c3ef}.workspace{border-radius:22px}.primary{box-shadow:0 8px 20px #302b7b22}.evidenceNote{border-radius:20px}
+
+.brand-symbol{display:block;object-fit:contain;width:116px;height:46px;padding:6px 8px;background:#fff;border-radius:12px}.brand{gap:13px}.brand small{line-height:1.3}.top{min-height:80px}@media(max-width:800px){.brand-symbol{width:101px;height:42px}}

@@ -9,7 +9,6 @@ const copies: ReadonlyArray<readonly [string, string]> = [
   ['public/index.html', 'public/index.html'],
   ['public/styles.css', 'public/styles.css'],
   ['public/oma-brand.css', 'public/oma-brand.css'],
-  ['ios/OMAOne/Assets.xcassets/OMALogoReference.imageset/OMALogoReference.jpg', 'public/icons/oma-logo.jpg'],
   ['public/manifest.webmanifest', 'public/manifest.webmanifest'],
   ['public/icons', 'public/icons'],
   ['public/products', 'public/products'],

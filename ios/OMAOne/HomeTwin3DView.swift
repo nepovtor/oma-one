@@ -25,8 +25,8 @@ struct HomeTwin3DView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoMessage = ""
 
-    private let dark = Color(red: 0.06, green: 0.14, blue: 0.25)
-    private let accent = Color(red: 0.12, green: 0.42, blue: 0.88)
+    private let dark = Color(red: 0.133, green: 0.129, blue: 0.359)
+    private let accent = Color(red: 0.188, green: 0.169, blue: 0.482)
 
     private var selectedRoom: TwinRoom? {
         apartment.rooms.first(where: { $0.id == selectedRoomID }) ?? apartment.rooms.first
@@ -64,7 +64,7 @@ struct HomeTwin3DView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("OMA HOME TWIN", systemImage: "cube.transparent.fill")
+                Label("ОМА · МОЙ ДОМ", systemImage: "cube.transparent.fill")
                     .font(.system(size: 13, weight: .bold))
                 Spacer()
                 Text("OFFLINE · 3D").font(.system(size: 11, weight: .semibold))

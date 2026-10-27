@@ -1,7 +1,7 @@
 import SwiftUI
 import WebKit
 
-/// Optional browser for the existing full OMA ONE server. All primary iOS demo screens
+/// Optional browser for the existing full ОМА server. All primary iOS demo screens
 /// (including eight interactive modules) work without this connection.
 struct ServerPreview: UIViewRepresentable {
     let url: URL
