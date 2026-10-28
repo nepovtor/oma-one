@@ -25,7 +25,8 @@ test('OMA web screens use the supplied mark, no ONE display name, and functional
  assert.doesNotMatch(app,/01 · Опишите задачу|02 · Проверьте решение/);
  assert.match(app,/03 · Сохраните результат/);
  assert.match(app,/data-action="start-shelf"/);
- assert.match(app,/data-view="planner"/);
+ assert.match(app,/data-view="tasks"/);
+ assert.match(app,/function pageTasks\(\)/);
  assert.match(app,/data-view="cart"/);
  assert.match(app,/data-view="profile"/);
  assert.match(app,/aria-current="page"/);
