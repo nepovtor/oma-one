@@ -135,7 +135,7 @@ function pageShelf(){const draft=S.shelfDraft as ShelfDraft,evaluation=shelfEval
 
 function pageTasks(){
  const entries=S.data.scenarios as Dynamic[];
- return ${title('Ваши задачи','Выберите задачу. Далее подберём материалы и порядок действий.')}
+ return `${title('Ваши задачи','Выберите задачу. Далее подберём материалы и порядок действий.')}
  <div class="task-choice-grid">${entries.map((item:Dynamic)=>`<button class="task-choice" data-action="choose-scenario" data-id="${enc(item.id)}"><span class="task-choice-icon">${icon(item.id==='shelf'?'shelf':'planner')}</span><span class="task-choice-copy"><strong>${enc(item.title)}</strong><small>${enc(item.subtitle)}</small></span><span class="task-choice-arrow" aria-hidden="true">→</span></button>`).join('')}</div>
  <p class="legal-note top-gap">Для каждого проекта расчёт предварительный. Перед работами проверьте совместимость и инструкции производителя.</p>`;
 }
