@@ -11,12 +11,12 @@ import {FIXTURES} from './proof-fixtures.js';
 import {asAppError} from './types.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PROOF_PORT||8790);
-const types: Record<string, string>={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8'};
+const types: Record<string, string>={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.js':'application/javascript; charset=utf-8'};
 function send(res: ServerResponse,status: number,body: unknown,type='application/json; charset=utf-8'){
  const payload=typeof body==='string'||Buffer.isBuffer(body)?body:JSON.stringify(body);
  res.writeHead(status,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','content-security-policy':"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"});res.end(payload);
 }
-const allowed=new Map<string, string>([['/proof.html','proof.html'],['/','proof.html'],['/proof-ui.js','proof-ui.js'],['/proof.css','proof.css']]);
+const allowed=new Map<string, string>([['/proof.html','proof.html'],['/','proof.html'],['/proof-ui.js','proof-ui.js'],['/proof.css','proof.css'],['/icons/oma-logo.jpg','public/icons/oma-logo.jpg']]);
 const server=http.createServer(async(req,res)=>{
  try{
   const url=new URL(req.url??'/','http://localhost');
@@ -35,4 +35,4 @@ const server=http.createServer(async(req,res)=>{
   send(res,404,{error:'Not found'});
  }catch(error){const caught=asAppError(error);send(res,500,{error:'Demo processing failure',detail:String(caught.message).slice(0,120)});}
 });
-server.listen(port,'0.0.0.0',()=>console.log(`OMA ONE Evidence Lab ready: http://localhost:${port} (DEMO fixtures, no real OMA data)`));
+server.listen(port,'0.0.0.0',()=>console.log(`ОМА · Лаборатория расчётов: http://localhost:${port} (DEMO fixtures, no real OMA data)`));

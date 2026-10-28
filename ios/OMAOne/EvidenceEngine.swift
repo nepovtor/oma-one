@@ -45,3 +45,25 @@ import JavaScriptCore
         return ids
     }
 }
+
+
+@MainActor
+extension EvidenceEngine {
+    func canCompleteShelfStep(
+        _ completed: [String],
+        stepID: String
+    ) -> Bool {
+        if completed.contains(stepID) {
+            return true
+        }
+
+        guard let updated = toggleShelfStep(
+            completed,
+            stepID: stepID
+        ) else {
+            return false
+        }
+
+        return updated.contains(stepID)
+    }
+}
