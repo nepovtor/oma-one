@@ -5,13 +5,17 @@ import CryptoKit
 
 // MARK: - Demo styling. User supplied reference screenshots are for a hackathon concept, not an official OMA release.
 private enum Style {
-    static let blue = Color(red: 0.05, green: 0.29, blue: 0.69)
-    static let orange = Color(red: 0.94, green: 0.35, blue: 0.08)
-    static let ink = Color(red: 0.08, green: 0.13, blue: 0.20)
-    static let soft = Color(red: 0.96, green: 0.97, blue: 0.99)
-    static let paleBlue = Color(red: 0.88, green: 0.94, blue: 1.0)
-    static let paleOrange = Color(red: 1.0, green: 0.93, blue: 0.87)
-    static let line = Color(red: 0.88, green: 0.90, blue: 0.93)
+    // Палитра основана на корпоративных материалах ОМА; проект неофициальный.
+    static let blue = Color(red: 0.027, green: 0.373, blue: 0.659)
+    static let deepBlue = Color(red: 0.024, green: 0.302, blue: 0.533)
+    static let cyan = Color(red: 0.039, green: 0.624, blue: 0.710)
+    static let orange = Color(red: 0.784, green: 0.357, blue: 0.153)
+    static let ink = Color(red: 0.094, green: 0.196, blue: 0.278)
+    static let soft = Color(red: 0.933, green: 0.957, blue: 0.973)
+    static let paleBlue = Color(red: 0.910, green: 0.953, blue: 0.984)
+    static let paleCyan = Color(red: 0.898, green: 0.969, blue: 0.976)
+    static let paleOrange = Color(red: 1.0, green: 0.953, blue: 0.910)
+    static let line = Color(red: 0.882, green: 0.910, blue: 0.925)
     static let hero = blue
 }
 
@@ -81,38 +85,26 @@ private func productCountText(_ count: Int) -> String {
 }
 
 private struct OmaCardSurface: ViewModifier {
-    var radius:CGFloat = 19
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    var radius: CGFloat = 19
     func body(content: Content) -> some View {
-        if reduceTransparency {
-            content.background(.white,in:RoundedRectangle(cornerRadius:radius))
-        } else if #available(iOS 26, *) {
-            content.glassEffect(.regular.tint(Style.soft.opacity(0.35)).interactive(),in:.rect(cornerRadius:radius))
-        } else {
-            content.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:radius))
-                .overlay(RoundedRectangle(cornerRadius:radius).strokeBorder(.white.opacity(0.65)))
-        }
+        content
+            .background(.white, in: RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius)
+                .strokeBorder(Style.line, lineWidth: 1))
     }
 }
 
 private struct OmaGlassGroup<Content:View>:View {
     @ViewBuilder let content:()->Content
-    var body:some View {
-        if #available(iOS 26, *) { GlassEffectContainer(spacing:12) { content() } }
-        else { content() }
-    }
+    var body:some View { content() }
 }
 
-private struct OmaTabBarSurface:ViewModifier {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    func body(content:Content)->some View {
-        if reduceTransparency {
-            content.background(.white,in:RoundedRectangle(cornerRadius:26))
-        } else if #available(iOS 26, *) {
-            content.glassEffect(.regular.tint(Style.soft.opacity(0.2)),in:.rect(cornerRadius:26))
-        } else {
-            content.background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:26))
-        }
+private struct OmaTabBarSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(.white, in: RoundedRectangle(cornerRadius: 26))
+            .overlay(RoundedRectangle(cornerRadius: 26)
+                .strokeBorder(Style.line.opacity(0.80), lineWidth: 1))
     }
 }
 
@@ -225,6 +217,13 @@ private struct Category: Identifiable {
         guard let data = UserDefaults.standard.data(forKey: "oma_demo_projects"), let items = try? JSONDecoder().decode([SavedProject].self, from: data) else { return [] }
         return items
     }() { didSet { UserDefaults.standard.set(try? JSONEncoder().encode(projects), forKey: "oma_demo_projects") } }
+    @Published var serviceLedger: DemoServiceLedger = {
+        guard let data = UserDefaults.standard.data(forKey: "oma_demo_service_requests_v1"),
+              let value = try? JSONDecoder().decode(DemoServiceLedger.self, from: data) else { return DemoServiceLedger() }
+        return value
+    }() {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(serviceLedger), forKey: "oma_demo_service_requests_v1") }
+    }
     @Published var orders: [String] = UserDefaults.standard.stringArray(forKey: "oma_demo_orders") ?? [] {
         didSet { UserDefaults.standard.set(orders, forKey: "oma_demo_orders") }
     }
@@ -300,6 +299,14 @@ private struct Category: Identifiable {
         }
         lastMessage = "Комплект добавлен в корзину с учётом имеющихся единиц"
     }
+    func saveVibeProject(amount: Double) {
+        if let index = projects.firstIndex(where: { $0.scenario == "vibe-bedroom" }) {
+            projects[index].amount = amount
+        } else {
+            projects.insert(SavedProject(scenario: "vibe-bedroom", amount: amount), at: 0)
+        }
+        lastMessage = "VIBE-проект сохранён локально в общем разделе «Мой дом»"
+    }
     func save(_ scenario: Scenario, amount: Double) {
         projects.insert(SavedProject(scenario:scenario.rawValue,amount:amount),at:0)
         lastMessage = "Проект сохранён в «Мой дом»"
@@ -362,6 +369,26 @@ private struct Category: Identifiable {
         if let hash { projects[index].shelf?.photoHash = hash }
         lastMessage = "Фото прикреплено, статус выполнения не менялся"
     }
+    var homeTwinShelfEvidence: TwinShelfEvidence {
+        guard let project = projects.first(where: { $0.shelf != nil }) else { return .none }
+        guard project.completed else { return .planned }
+        switch project.proofStatus {
+        case "EVIDENCE_SUBMITTED": return .photoSubmitted
+        case "SELF_REPORTED": return .selfReported
+        default: return .planned
+        }
+    }
+
+    func createServiceRequest(projectID: UUID?, kind: DemoServiceKind, desiredDay: Date,
+                              slot: DemoServiceSlot, note: String)
+        -> Result<DemoServiceRequest, DemoServiceRequestError> {
+        serviceLedger.create(projectID: projectID, kind: kind,
+                             desiredDay: desiredDay, slot: slot, note: note)
+    }
+    func cancelServiceRequest(id: UUID) {
+        _ = serviceLedger.cancel(id: id)
+    }
+
     func checkout() {
         guard cartCount > 0 else { return }
         orders.insert("Демо-заказ №\(1000 + orders.count + 1) · \(rub(cartTotal)) · \(city)", at:0)
@@ -393,23 +420,36 @@ private enum Tab: CaseIterable {
 }
 
 struct ContentView: View {
+    private static var previewTwin: Bool {
+        #if targetEnvironment(simulator)
+        return ProcessInfo.processInfo.environment["OMA_TWIN_PREVIEW"] == "1"
+        #else
+        return false
+        #endif
+    }
     @StateObject private var store = Store()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var tabPill
     @State private var tab: Tab = .home
+    @AppStorage("oma_vibe_enabled") private var vibeEnabled = false
     @State private var showONE = false
     @State private var startPlanner = false
     @State private var startShelf = false
+    @State private var startTwin = false
     @State private var showEngine = false
     @State private var category: String? = nil
     @State private var search = ""
     @AppStorage("oma_engine_url") private var backendURL = ""
 
     var body: some View {
+        Group {
+        if vibeEnabled {
+            VibeExperience(store: store, enabled: $vibeEnabled, classicTab: $tab, showONE: $showONE, startTwin: $startTwin)
+        } else {
         VStack(spacing:0) {
             Group {
                 switch tab {
-                case .home: HomeScreen(store:store, showONE:$showONE, startPlanner:$startPlanner, startShelf:$startShelf, selectedTab:$tab, category:$category, search:$search)
+                case .home: HomeScreen(store:store, showONE:$showONE, vibeEnabled:$vibeEnabled, startPlanner:$startPlanner, startShelf:$startShelf, startTwin:$startTwin, selectedTab:$tab, category:$category, search:$search)
                 case .catalog: CatalogScreen(store:store, category:$category, search:$search)
                 case .cart: CartScreen(store:store, selectedTab:$tab)
                 case .favorites: FavoritesScreen(store:store, selectedTab:$tab)
@@ -453,13 +493,20 @@ struct ContentView: View {
             }
             .padding(.horizontal,10).padding(.top,10).padding(.bottom,5)
             .modifier(OmaTabBarSurface())
-            .shadow(color:Style.blue.opacity(0.08),radius:16,y:-4)
         }
+        } // classic interface
+        } // shared mode container
         .preferredColorScheme(.light)
+        .onAppear {
+            if ContentView.previewTwin {
+                startTwin = true
+                showONE = true
+            }
+        }
         .tint(Style.blue)
         .buttonStyle(OmaPressButtonStyle())
-        .sheet(isPresented:$showONE,onDismiss:{startPlanner=false;startShelf=false}) {
-            NavigationStack { ONEHub(store:store,showONE:$showONE,startPlanner:$startPlanner,startShelf:$startShelf,selectedTab:$tab,showEngine:$showEngine) }
+        .sheet(isPresented:$showONE,onDismiss:{startPlanner=false;startShelf=false;startTwin=false}) {
+            NavigationStack { ONEHub(store:store,showONE:$showONE,startPlanner:$startPlanner,startShelf:$startShelf,startTwin:$startTwin,selectedTab:$tab,showEngine:$showEngine) }
                 .tint(Style.blue)
         }
         .sheet(isPresented:$showEngine) {
@@ -470,7 +517,7 @@ struct ContentView: View {
                     } else {
                         VStack(spacing:14) {
                             Image(systemName:"network.badge.shield.half.filled").font(.system(size:44)).foregroundColor(Style.blue)
-                            Text("Укажи адрес сервера OMA ONE в профиле").font(.headline).multilineTextAlignment(.center)
+                            Text("Укажи адрес сервера ОМА в профиле").font(.headline).multilineTextAlignment(.center)
                             Text("Нативное приложение и все восемь демо-модулей работают без сервера. Полная серверная платформа подключается отдельно.").foregroundColor(.secondary).multilineTextAlignment(.center)
                         }.padding(30)
                     }
@@ -485,22 +532,49 @@ struct ContentView: View {
 // MARK: - Original mobile shell / screenshot inspired UI
 private struct BrandHeader: View {
     @ObservedObject var store: Store
+
     var body: some View {
-        HStack {
-            Image("OMALogoReference").resizable().scaledToFit().frame(width:67,height:37)
-            Spacer()
+        HStack(spacing: 10) {
+            Image("OMALogoReference")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 99, height: 44)
+                .accessibilityLabel("ОМА")
+            VStack(alignment: .leading, spacing: 2) {
+                Text("МОЙ ДОМ")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .tracking(1.4)
+                    .foregroundStyle(Style.blue)
+                Text("И РЕМОНТ")
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.9)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
             Menu {
-                ForEach(["Минск","Гомель","Брест","Гродно","Витебск","Могилёв"],id:\.self) { city in
+                ForEach(["Минск", "Гомель", "Брест", "Гродно", "Витебск", "Могилёв"], id: \.self) { city in
                     Button(city) { store.city = city }
                 }
             } label: {
-                HStack(spacing:6) {
-                    Image(systemName:"location.north.fill").font(.system(size:15))
-                    Text(store.city).font(.system(size:16)).foregroundColor(.black)
-                    Image(systemName:"chevron.right").font(.system(size:12,weight:.bold))
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 13, weight: .medium))
+                    Text(store.city)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
                 }
-            }.tint(.black)
-        }.padding(.horizontal,18).frame(height:64).background(.white)
+                .foregroundStyle(Style.blue)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 39)
+                .background(Style.paleBlue, in: Capsule())
+            }
+            .accessibilityLabel("Город: \(store.city)")
+        }
+        .padding(.horizontal, 17)
+        .frame(height: 76)
+        .background(.white)
     }
 }
 
@@ -526,96 +600,183 @@ private struct SearchField: View {
 private struct HomeScreen: View {
     @ObservedObject var store: Store
     @Binding var showONE: Bool
+    @Binding var vibeEnabled: Bool
     @Binding var startPlanner: Bool
     @Binding var startShelf: Bool
+    @Binding var startTwin: Bool
     @Binding var selectedTab: Tab
     @Binding var category: String?
     @Binding var search: String
-    var body: some View {
-        VStack(spacing:0) {
-            BrandHeader(store:store)
-            SearchField(text:$search) { category = nil; selectedTab = .catalog }
-                .padding(.horizontal,17).padding(.bottom,16)
-                .background(Color.white)
-            ScrollView {
-                VStack(alignment:.leading,spacing:22) {
-                    VStack(alignment:.leading,spacing:5) {
-                        Text("Что хотите сделать дома?")
-                            .font(.system(size:25,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        Text("Начните с задачи — подскажем шаги и покупки")
-                            .font(.system(size:14)).foregroundStyle(.secondary)
-                    }
-                    Button { startShelf = true; showONE = true } label: {
-                        VStack(alignment:.leading,spacing:13) {
-                            HStack {
-                                Text("OMA ONE · Начать с задачи").font(.system(size:14,weight:.semibold))
-                                Spacer()
-                                Image(systemName:"arrow.up.right").font(.system(size:15,weight:.semibold))
-                            }
-                            Text("Хочу повесить полку")
-                                .font(.system(size:24,weight:.bold,design:.rounded))
-                                .multilineTextAlignment(.leading)
-                            Text("Уточним стену и нагрузку, проверим крепёж, соберём список покупок")
-                                .font(.system(size:14)).foregroundStyle(.white.opacity(0.84))
-                            HStack {
-                                Text("Проверить монтаж").font(.system(size:14,weight:.bold))
-                                Image(systemName:"arrow.right").font(.system(size:13,weight:.bold))
-                            }
-                            .foregroundStyle(Style.blue).padding(.horizontal,15).frame(height:38)
-                            .background(.white,in:Capsule())
-                        }
-                        .frame(maxWidth:.infinity,alignment:.leading).padding(20)
-                        .foregroundStyle(.white)
-                        .background(Style.hero,in:RoundedRectangle(cornerRadius:22))
-                    }.buttonStyle(OmaPressButtonStyle())
 
-                    VStack(alignment:.leading,spacing:12) {
-                        Text("Ещё задачи")
-                            .font(.system(size:19,weight:.bold,design:.rounded)).foregroundStyle(Style.ink)
-                        Button { startPlanner = true; showONE = true } label: {
-                            categoryRow("Починить смеситель","Проверить детали и составить смету","drop")
-                        }.buttonStyle(OmaPressButtonStyle())
-                        Button { category = nil; selectedTab = .catalog } label: {
-                            categoryRow("Найти материалы","Открыть демонстрационный каталог","square.grid.2x2")
-                        }.buttonStyle(OmaPressButtonStyle())
+    var body: some View {
+        VStack(spacing: 0) {
+            BrandHeader(store: store)
+            SearchField(text: $search) {
+                category = nil
+                selectedTab = .catalog
+            }
+            .padding(.horizontal, 17)
+            .padding(.bottom, 14)
+            .background(.white)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Button { withAnimation(.easeInOut(duration: 0.25)) { vibeEnabled = true } } label: {
+                        HStack(spacing: 14) {
+                            Image("VibeBedroom").resizable().scaledToFill().frame(width: 94, height: 105).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text("ОМА · VIBE").font(.system(size: 11, weight: .bold)).tracking(1.3).foregroundStyle(Color(red: 0.08, green: 0.68, blue: 0.76))
+                                Text("Твой дом. Твой вайб.").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                                Text("Вдохновляйся и создавай своё пространство").font(.system(size: 12)).foregroundStyle(.white.opacity(0.9))
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.right").foregroundStyle(.white)
+                        }.padding(13).background(Color(red: 0.188, green: 0.169, blue: 0.482), in: RoundedRectangle(cornerRadius: 22))
                     }
-                    if let latest = store.projects.first(where: { $0.shelf != nil }) {
-                        Button { startShelf = true; showONE = true } label: {
-                            categoryRow("Вернуться к полке",latest.completed ? "Запись о выполнении" : "Черновик сохранён", "bookmark")
-                        }.buttonStyle(OmaPressButtonStyle())
+                    .accessibilityIdentifier("oma.vibe.open")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Добро пожаловать домой")
+                            .font(.system(size: 23, weight: .bold, design: .rounded))
+                            .foregroundStyle(Style.ink)
+                        Text("Все задачи, материалы и проекты в одном месте")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
                     }
-                    Text("Неофициальный конкурсный прототип · данные демонстрационные")
-                        .font(.system(size:12)).foregroundStyle(.secondary)
+                    .padding(.top, 5)
+
+                    Button {
+                        startTwin = true
+                        showONE = true
+                    } label: {
+                        HStack(alignment: .center, spacing: 13) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Style.paleCyan)
+                                Image(systemName: "cube.transparent.fill")
+                                    .font(.system(size: 33, weight: .light))
+                                    .foregroundStyle(Style.blue)
+                            }
+                            .frame(width: 66, height: 70)
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 6) {
+                                    Text("МОЯ КВАРТИРА · ФОТО")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .tracking(0.3)
+                                    Text("НОВОЕ")
+                                        .font(.system(size: 8, weight: .black))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 4)
+                                        .background(Style.paleCyan, in: Capsule())
+                                }
+                                Text("Видимый прогресс ремонта")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                Text("Поворачивайте план, отмечайте сделанное")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Style.blue)
+                        }
+                        .padding(13)
+                        .modifier(OmaCardSurface(radius: 20))
+                        .foregroundStyle(Style.ink)
+                    }
+                    .buttonStyle(OmaPressButtonStyle())
+                    .accessibilityIdentifier("homeTwin.open")
+
+                    HStack(spacing: 9) {
+                        miniBenefit("checkmark.shield", "Проверка", "Решений")
+                        miniBenefit("bag", "Покупки", "По задаче")
+                        miniBenefit("house", "Мой дом", "История")
+                    }
+                    .accessibilityElement(children: .contain)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Что ещё можно сделать?")
+                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                            .foregroundStyle(Style.ink)
+                        Button {
+                            startPlanner = true
+                            showONE = true
+                        } label: {
+                            categoryRow("Починить смеситель", "Проверить детали и составить смету", "drop")
+                        }
+                        Button {
+                            category = nil
+                            selectedTab = .catalog
+                        } label: {
+                            categoryRow("Найти материалы", "Перейти в демонстрационный каталог", "square.grid.2x2")
+                        }
+                        if let latest = store.projects.first(where: { $0.shelf != nil }) {
+                            Button {
+                                startShelf = true
+                                showONE = true
+                            } label: {
+                                categoryRow("Вернуться к полке",
+                                            latest.completed ? "Выполнение записано" : "Черновик сохранён", "bookmark")
+                            }
+                        }
+                    }
+                    .buttonStyle(OmaPressButtonStyle())
+
+                    Text("Неофициальный конкурсный прототип · цены, остатки и заказы демонстрационные")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
                 }
                 .padding(18)
             }
             .background(Style.soft)
         }
     }
-    private func quickAction(_ title:String,_ symbol:String,accent:Color,action:@escaping ()->Void) -> some View {
-        Button(action:action) {
-            VStack(alignment:.leading,spacing:14) {
-                Image(systemName:symbol).font(.system(size:22,weight:.medium)).foregroundStyle(accent)
-                Text(title).font(.system(size:15,weight:.semibold,design:.rounded)).lineLimit(1)
-            }
-            .frame(maxWidth:.infinity,minHeight:66,alignment:.leading)
-            .padding(16).modifier(OmaCardSurface(radius:20))
-            .foregroundStyle(Style.ink)
-        }.buttonStyle(OmaPressButtonStyle())
+
+    private func miniBenefit(_ symbol: String, _ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Style.cyan)
+                .frame(height: 23)
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Style.ink)
+            Text(subtitle)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .modifier(OmaCardSurface(radius: 16))
     }
-    private func categoryRow(_ title:String,_ detail:String,_ symbol:String) -> some View {
-        HStack(spacing:15) {
-            Image(systemName:symbol).font(.system(size:23,weight:.medium))
-                .foregroundStyle(Style.blue).frame(width:38,height:38)
-            VStack(alignment:.leading,spacing:4) {
-                Text(title).font(.system(size:16,weight:.bold,design:.rounded))
-                Text(detail).font(.system(size:12)).foregroundStyle(.secondary)
+
+    private func categoryRow(_ title: String, _ detail: String, _ symbol: String) -> some View {
+        HStack(spacing: 13) {
+            Image(systemName: symbol)
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(Style.blue)
+                .frame(width: 47, height: 47)
+                .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 13))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
-            Spacer(minLength:0)
-            Image(systemName:"chevron.right").font(.system(size:12,weight:.bold)).foregroundStyle(Style.blue)
-        }.padding(14).modifier(OmaCardSurface(radius:20)).foregroundStyle(Style.ink)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Style.blue)
+        }
+        .padding(13)
+        .modifier(OmaCardSurface(radius: 18))
+        .foregroundStyle(Style.ink)
     }
 }
+
 
 private struct ScreenTitle: View {
     let title:String
@@ -953,8 +1114,8 @@ private struct ProfileScreen: View {
                         HStack {
                             Image(systemName:"house").font(.system(size:23))
                             VStack(alignment:.leading,spacing:3) {
-                                Text("OMA ONE · Мой дом").font(.system(size:17,weight:.bold))
-                                Text("Планы, проекты и 8 демо-технологий").font(.system(size:12))
+                                Text("ОМА · Мой дом").font(.system(size:17,weight:.bold))
+                                Text("Проекты, 3D-квартира и 8 демо-технологий").font(.system(size:12))
                             }
                             Spacer(); Image(systemName:"chevron.right")
                         }.padding(20).foregroundColor(.white).background(Style.hero,in:RoundedRectangle(cornerRadius:20))
@@ -996,7 +1157,7 @@ private struct ProfileScreen: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment:.leading,spacing:16) {
-                        Text("OMA ONE помогает пройти путь от домашней задачи до плана и демонстрационной корзины.")
+                        Text("ОМА помогает пройти путь от домашней задачи до плана и демонстрационной корзины.")
                             .font(.system(size:19,weight:.semibold,design:.rounded))
                         Text("Восемь модулей показывают проверяемые учебные сценарии. Каталог, цены, наличие, услуги и заказы не связаны с официальными системами ОМА.")
                         Text("Нативные сценарии работают без сервера. Для расширенной версии и лаборатории расчётов адреса можно указать в разделе «Моя информация».")
@@ -1015,7 +1176,7 @@ private struct ProfileScreen: View {
     }
 }
 
-// MARK: - OMA ONE native feature hub, backed by persistent demo state
+// MARK: - ОМА native feature hub, backed by persistent demo state
 private enum ONEFeature: String, CaseIterable, Identifiable {
     case zerobuy, antifail, domino, synccity, proof, dna, forge, pulse
     var id:String{rawValue}
@@ -1062,6 +1223,7 @@ private struct ONEHub: View {
     @Binding var showONE:Bool
     @Binding var startPlanner:Bool
     @Binding var startShelf:Bool
+    @Binding var startTwin:Bool
     @Binding var selectedTab:Tab
     @Binding var showEngine:Bool
     @Environment(\.dismiss) private var dismiss
@@ -1071,20 +1233,21 @@ private struct ONEHub: View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
                 VStack(alignment:.leading,spacing:13) {
-                    Text("OMA ONE · Мой дом").font(.system(size:14,weight:.semibold))
+                    Text("ОМА · Мой дом").font(.system(size:14,weight:.semibold))
                     Text("От задачи к готовому плану")
                         .font(.system(size:25,weight:.bold,design:.rounded)).fixedSize(horizontal:false,vertical:true)
                     Text("Подберите материалы, проверьте ограничения и сохраните проект.")
-                        .font(.system(size:14)).foregroundStyle(.white.opacity(0.85))
+                        .font(.system(size:14)).foregroundStyle(Style.ink.opacity(0.72))
                     NavigationLink { PlannerScreen(store:store,showONE:$showONE,selectedTab:$selectedTab) } label: {
                         HStack {Text("Составить план").font(.system(size:15,weight:.semibold)); Spacer(); Image(systemName:"arrow.right")}
                             .foregroundColor(Style.blue).padding(.horizontal,16).frame(height:46)
                             .background(.white,in:RoundedRectangle(cornerRadius:14))
                     }.padding(.top,3)
                 }
-                .foregroundColor(.white).padding(19)
-                .background(Style.hero)
-                .clipShape(RoundedRectangle(cornerRadius:22))
+                .foregroundColor(Style.ink).padding(19)
+                .background(Style.paleBlue)
+                .clipShape(RoundedRectangle(cornerRadius:16))
+                .overlay(RoundedRectangle(cornerRadius:16).strokeBorder(Style.line, lineWidth:1))
                 NavigationLink {
                     ShelfFlowScreen(store:store,showONE:$showONE,selectedTab:$selectedTab,
                                     existing:store.projects.first(where:{$0.shelf != nil})?.shelf)
@@ -1092,6 +1255,32 @@ private struct ONEHub: View {
                     HStack { Text("Хочу повесить полку").font(.system(size:16,weight:.semibold)); Spacer(); Image(systemName:"arrow.right") }
                         .foregroundStyle(Style.blue).padding(17).modifier(OmaCardSurface(radius:18))
                 }
+                NavigationLink {
+                    HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "cube.transparent.fill")
+                            .font(.system(size: 31))
+                            .foregroundStyle(Style.blue)
+                            .frame(width: 47, height: 52)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("OMA HOME TWIN · 3D")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(Style.ink)
+                            Text("Смотрите типовую трёшку и прогресс ремонта")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Style.blue)
+                    }
+                    .padding(17)
+                    .modifier(OmaCardSurface(radius: 20))
+                }
+                .accessibilityIdentifier("homeTwin.hub")
+
                 HStack {
                     VStack(alignment:.leading,spacing:3) { Text("Мои проекты").font(.system(size:16,weight:.semibold)); Text("Сохранено: \(store.projects.count)").font(.system(size:13)).foregroundColor(.secondary) }
                     Spacer()
@@ -1099,6 +1288,24 @@ private struct ONEHub: View {
                         Image(systemName:"arrow.right").font(.system(size:15,weight:.semibold)).frame(width:44,height:44)
                     }.accessibilityLabel("Открыть мои проекты")
                 }.padding(.horizontal,16).padding(.vertical,10).modifier(OmaCardSurface(radius:20))
+                NavigationLink {
+                    ServiceRequestScreen(store:store,projectID:nil)
+                } label: {
+                    HStack(spacing:14) {
+                        Image(systemName:"wrench.and.screwdriver")
+                            .font(.system(size:24))
+                            .foregroundStyle(Style.blue).frame(width:38)
+                        VStack(alignment:.leading,spacing:3) {
+                            Text("Найти помощь мастера · демо")
+                                .font(.system(size:16,weight:.semibold)).foregroundStyle(Style.ink)
+                            Text("Выбрать время и сохранить запрос локально")
+                                .font(.system(size:12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName:"chevron.right").foregroundStyle(Style.blue)
+                    }.padding(16).modifier(OmaCardSurface(radius:20))
+                }
+                .accessibilityIdentifier("service.openHub")
                 Text("Технологии проекта").font(.system(size:19,weight:.bold,design:.rounded)).foregroundColor(Style.ink)
                 OmaGlassGroup {
                     LazyVStack(spacing:10) {
@@ -1108,8 +1315,8 @@ private struct ONEHub: View {
                                     Image(systemName:feature.symbol).font(.system(size:20,weight:.regular))
                                         .foregroundColor(Style.blue).frame(width:30)
                                     VStack(alignment:.leading,spacing:3) {
-                                        Text(feature.title).font(.system(size:15,weight:.semibold)).foregroundColor(Style.ink)
-                                        Text(feature.description).font(.system(size:12)).foregroundColor(.secondary)
+                                        Text(feature.description).font(.system(size:15,weight:.semibold)).foregroundColor(Style.ink)
+                                        Text(feature.title).font(.system(size:12)).foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     Image(systemName:"chevron.right").font(.system(size:12,weight:.semibold)).foregroundColor(.secondary)
@@ -1158,13 +1365,16 @@ private struct ONEHub: View {
                     .font(.system(size:11)).foregroundColor(.secondary)
             }.padding(16)
         }.background(Style.soft)
-            .navigationTitle("OMA ONE").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("ОМА").navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented:$startPlanner) {
                 PlannerScreen(store:store,showONE:$showONE,selectedTab:$selectedTab)
             }
             .navigationDestination(isPresented:$startShelf) {
                 ShelfFlowScreen(store:store,showONE:$showONE,selectedTab:$selectedTab,
                                 existing:store.projects.first(where:{$0.shelf != nil})?.shelf)
+            }
+            .navigationDestination(isPresented:$startTwin) {
+                HomeTwin3DView(shelfEvidence:store.homeTwinShelfEvidence)
             }
             .toolbar {ToolbarItem(placement:.topBarTrailing){Button("Закрыть"){dismiss()}}}
     }
@@ -1293,6 +1503,13 @@ private struct ProjectsScreen: View {
     @Binding var selectedTab:Tab
     var body: some View {
         List {
+            NavigationLink {
+                HomeTwin3DView(shelfEvidence: store.homeTwinShelfEvidence)
+            } label: {
+                Label("Открыть мою 3D-квартиру", systemImage: "cube.transparent.fill")
+                    .foregroundStyle(Style.blue)
+                    .font(.system(size: 16, weight: .semibold))
+            }
             if store.projects.isEmpty {Text("Пока нет сохранённых проектов. Начните с раздела «Решить задачу».").foregroundColor(.secondary)}
             ForEach(store.projects) {p in
                 Group {
@@ -1309,7 +1526,7 @@ private struct ProjectsScreen: View {
                         }
                     } else {
                         VStack(alignment:.leading,spacing:9) {
-                            HStack {Text(Scenario(rawValue:p.scenario)?.title ?? "Проект").font(.headline);Spacer();Text(p.completed ? "Выполнен" : "В работе").font(.caption).foregroundColor(p.completed ? .green : Style.blue)}
+                            HStack {Text(p.scenario == "vibe-bedroom" ? "OMA VIBE · Моя спальня" : (Scenario(rawValue:p.scenario)?.title ?? "Проект")).font(.headline);Spacer();Text(p.completed ? "Выполнен" : "В работе").font(.caption).foregroundColor(p.completed ? .green : Style.blue)}
                             Text("Смета: \(rub(p.amount)) · \(p.date.formatted(date:.abbreviated,time:.omitted))").font(.caption).foregroundColor(.secondary)
                             if let img=p.photoName, let data=try? Data(contentsOf:URL(fileURLWithPath:img)),let photo=UIImage(data:data) {
                                 Image(uiImage:photo).resizable().scaledToFit().frame(height:120)
@@ -1383,11 +1600,11 @@ private struct FeatureScreen: View {
                     }
                 }
             }
-            Section(footer:Text("OMA ONE · рабочий нативный демонстрационный сценарий. Сведения о ценах, соседях, ремонтах и неисправностях являются тестовыми.")) {EmptyView()}
+            Section(footer:Text("ОМА · рабочий нативный демонстрационный сценарий. Сведения о ценах, соседях, ремонтах и неисправностях являются тестовыми.")) {EmptyView()}
         }
         .scrollContentBackground(.hidden).background(Style.soft)
         .navigationTitle(feature.title).navigationBarTitleDisplayMode(.inline)
-        .alert("OMA ONE",isPresented:Binding(get:{!status.isEmpty},set:{if !$0 {status=""}})) {Button("ОК",role:.cancel){status=""}} message:{Text(status)}
+        .alert("ОМА",isPresented:Binding(get:{!status.isEmpty},set:{if !$0 {status=""}})) {Button("ОК",role:.cancel){status=""}} message:{Text(status)}
     }
     private var evidenceInput:[String:Any]? {
         switch feature {
@@ -1602,8 +1819,10 @@ private struct ShelfFlowScreen: View {
     @Binding var showONE: Bool
     @Binding var selectedTab: Tab
     @State private var draft: ShelfProjectData
+    @State private var showService = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var message = ""
+    @AppStorage("oma_shelf_wizard_step") private var currentStep = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(store: Store, showONE: Binding<Bool>, selectedTab: Binding<Tab>, existing: ShelfProjectData?) {
@@ -1641,137 +1860,39 @@ private struct ShelfFlowScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Хочу повесить полку")
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("Повесить полку")
                             .font(.system(size: 25, weight: .bold, design: .rounded))
                             .foregroundStyle(Style.ink)
-                        Text("Уточним условия монтажа, затем составим список покупок. Всё сохраняется на iPhone.")
+                        Text("Условия, проверка, комплект, работы и результат — один шаг за раз.")
                             .font(.system(size: 14)).foregroundStyle(.secondary)
                     }
-                    Image("ProductP07").resizable().scaledToFill()
-                        .frame(width: 84, height: 84).clipShape(RoundedRectangle(cornerRadius: 16))
+                    Spacer(minLength: 0)
+                    Image("ProductP07").resizable().scaledToFit()
+                        .frame(width: 76, height: 66).padding(6)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityLabel("Иллюстрация настенной полки")
                 }
 
-                VStack(alignment: .leading, spacing: 16) {
-                    sectionTitle("Стена и нагрузка", "Ответы пользователя, не результат осмотра специалистом")
-                    Picker("Материал стены", selection: $draft.wall) {
-                        ForEach(ShelfSurface.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .accessibilityIdentifier("shelf.wall")
-                    HStack(spacing: 14) {
-                        numberField("Вес полки", value: $draft.shelfWeightKg)
-                        numberField("Что поставите", value: $draft.plannedLoadKg)
-                    }
-                    Text("Суммарная нагрузка: \(draft.totalLoadKg.formatted(.number.precision(.fractionLength(0...1)))) кг. Если вес неизвестен, сохраните черновик и уточните его.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
-                    Picker("Крепёж для проверки", selection: $draft.fastener) {
-                        ForEach(ShelfFastener.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .accessibilityIdentifier("shelf.fastener")
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
+                stepProgress
+                currentStepContent
 
-                VStack(alignment: .leading, spacing: 14) {
-                    sectionTitle("Перед сверлением", "Отметьте только то, что действительно проверили")
-                    Toggle("Стена осмотрена: нет видимых повреждений", isOn: $draft.wallInspected)
-                    Toggle("Места скрытых проводов и труб проверены", isOn: $draft.utilitiesChecked)
-                    Toggle("Нагрузка сверена с инструкцией крепежа", isOn: $draft.manufacturerInstructionsChecked)
-                    Text("Это ответы пользователя. Приложение не удостоверяет прочность стены и не заменяет специалиста.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }.tint(Style.blue).padding(18).modifier(OmaCardSurface(radius: 20))
-
-                decisionCard
-
-                VStack(alignment: .leading, spacing: 12) {
-                    sectionTitle("Список покупок", "Локальный демо-каталог · цены и наличие не подтверждены ОМА")
-                    ForEach(listProducts) { product in
-                        HStack(spacing: 12) {
-                            ProductVisual(product:product,height:58).frame(width:58).accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(product.name).font(.system(size: 14, weight: .semibold))
-                                Text("\(rub(product.price)) · цена демо").font(.system(size: 12)).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        Stepper("Есть дома: \(draft.ownedQuantities[product.id] ?? 0) шт.",
-                                value: Binding(get: { draft.ownedQuantities[product.id] ?? 0 },
-                                               set: { draft.ownedQuantities[product.id] = $0 }), in: 0...1)
-                            .font(.system(size: 13))
-                    }
-                    if readiness != .candidate {
-                        Text("Комплект пока не сформирован. Уточните условия или сохраните проект для консультации со специалистом.")
-                            .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
-                    } else {
-                        Text("Крепёж прошёл только предварительную проверку демо-правил. Перед монтажом нужна сверка с инструкцией и фактической стеной.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                    HStack { Text("К покупке · демо"); Spacer(); Text(rub(shoppingTotal)).fontWeight(.bold) }
-                        .font(.system(size: 17)).foregroundStyle(Style.ink)
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                VStack(alignment: .leading, spacing: 13) {
-                    sectionTitle("Порядок работ", "Domino проверяет порядок отмеченных этапов")
-                    ForEach(ShelfProjectData.steps.indices, id: \.self) { index in
-                        let step = ShelfProjectData.steps[index]
-                        Button {
-                            draft.completedStepIDs = EvidenceEngine.shared
-                                .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs
-                        } label: {
-                            HStack(spacing: 11) {
-                                Image(systemName: draft.completedStepIDs.contains(step.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(Style.blue)
-                                Text(step.title).foregroundStyle(Style.ink)
-                                Spacer()
-                            }.frame(minHeight: 42)
-                        }.buttonStyle(OmaPressButtonStyle())
-                    }
-                    if !dominoValid {
-                        Text("Порядок нарушен. Проверьте этапы: монтаж нельзя подтверждать раньше осмотра, коммуникаций и крепежа.")
-                            .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
-                    }
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                VStack(alignment: .leading, spacing: 12) {
-                    sectionTitle("Результат работ", "Proof · только личная запись, не проверка специалистом")
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label(draft.hasProofPhoto ? "Заменить фото результата" : "Прикрепить фото результата", systemImage: "photo")
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    if draft.hasProofPhoto { Text("Фото сохранено локально на устройстве").font(.system(size: 12)).foregroundStyle(.secondary) }
-                    Button("Записать выполнение со слов пользователя") {
-                        saveDraft()
-                        store.complete(draft.id)
-                        message = store.lastMessage
-                    }
-                    .disabled(readiness != .candidate || !draft.allStepsDone || !dominoValid)
-                    .font(.system(size: 14, weight: .semibold))
-                    if isRecorded { Text("Выполнение записано · экспертной проверки нет").foregroundStyle(Style.blue) }
-                }.padding(18).modifier(OmaCardSurface(radius: 20))
-
-                Text("Неофициальный офлайн-прототип. Изображения товаров иллюстративные; цены, остатки и заказы демонстрационные.")
+                Text("Неофициальный офлайн-прототип. Цены, остатки и заказы демонстрационные. Фото и отметка пользователя не являются экспертной проверкой.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }.padding(18)
         }
         .background(Style.soft)
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 10) {
-                Button(hasSavedProject ? "Сохранить изменения" : "Сохранить черновик") { saveDraft() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 14))
-                Button(readiness == .candidate ? "В корзину" : "Комплект не готов") { addShoppingList() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(readiness == .candidate ? .white : Style.ink)
-                    .background(readiness == .candidate ? Style.blue : Style.line,
-                                in: RoundedRectangle(cornerRadius: 14))
-                    .disabled(readiness != .candidate || zeroResult == nil)
-            }.padding(.horizontal, 18).padding(.vertical, 10).background(.white)
+            wizardActions
+                .padding(.horizontal, 18).padding(.vertical, 10).background(.white)
         }
         .navigationTitle("Повесить полку").navigationBarTitleDisplayMode(.inline)
-        .alert("OMA ONE", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
+        .navigationDestination(isPresented: $showService) {
+            ServiceRequestScreen(store:store,projectID:draft.id)
+        }
+        .alert("ОМА", isPresented: Binding(get: { !message.isEmpty }, set: { if !$0 { message = "" } })) {
             Button("Понятно", role: .cancel) { message = "" }
         } message: { Text(message) }
         .onChange(of: selectedPhoto) { item in
@@ -1793,6 +1914,188 @@ private struct ShelfFlowScreen: View {
                 } catch { message = "Не удалось сохранить фото на устройстве" }
             }
         }
+    }
+
+    private var stepProgress: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<4, id: \.self) { index in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(index + 1)").font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(index <= currentStep ? Style.blue : .secondary)
+                    Capsule().fill(index <= currentStep ? Style.cyan : Style.line).frame(height: 3)
+                }.accessibilityLabel(["Условия", "Проверка", "Комплект", "Работы и результат"][index])
+            }
+        }
+    }
+
+    @ViewBuilder private var currentStepContent: some View {
+        switch currentStep {
+        case 0: conditionsStep
+        case 1: checksStep
+        case 2: kitStep
+        default: finishStep
+        }
+    }
+
+    private var conditionsStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionTitle("Условия", "Сохранённые параметры поступают в локальный расчётный движок")
+            Picker("Материал стены", selection: $draft.wall) {
+                ForEach(ShelfSurface.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.accessibilityIdentifier("shelf.wall")
+            Picker("Тип крепежа", selection: $draft.fastener) {
+                ForEach(ShelfFastener.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.accessibilityIdentifier("shelf.fastener")
+            HStack(spacing: 12) {
+                numberField("Вес полки", value: $draft.shelfWeightKg)
+                numberField("Что поставите", value: $draft.plannedLoadKg)
+            }
+            Text("Суммарная нагрузка: \(draft.totalLoadKg.formatted(.number.precision(.fractionLength(0...1)))) кг")
+                .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.ink)
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var checksStep: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            sectionTitle("Проверка", "AntiFail · совместимость крепежа, стены и нагрузки")
+            Toggle("Стена осмотрена: нет видимых повреждений", isOn: $draft.wallInspected)
+            Toggle("Места скрытых проводов и труб проверены", isOn: $draft.utilitiesChecked)
+            Toggle("Инструкция производителя сверена", isOn: $draft.manufacturerInstructionsChecked)
+            decisionCard
+                VStack(alignment: .leading, spacing: 11) {
+                    sectionTitle("Помощь мастера", "Дополнительная услуга, пока без подключения реальных исполнителей")
+                    Text("Не уверены, что сможете выполнить монтаж сами? Укажите удобный день и сохраните заявку на консультацию или монтаж.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                    Button {
+                        saveDraft()
+                        showService = true
+                    } label: {
+                        Label("Запросить помощь мастера · демо", systemImage: "wrench.and.screwdriver")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                    }
+                    .accessibilityIdentifier("service.openShelf")
+                    if store.serviceLedger.activeRequest(for: draft.id) != nil {
+                        Text("Для этого проекта есть локально сохранённая заявка. Мастер не назначен.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(18).modifier(OmaCardSurface(radius: 20))
+
+            Text("Предупреждения остаются видимыми. При статусе blocked комплект сформировать нельзя.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }.tint(Style.blue).padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var kitStep: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("Комплект и корзина", "ZeroBuy · учёт точного количества вещей дома")
+            ForEach(listProducts) { product in
+                VStack(spacing: 8) {
+                    HStack(spacing: 11) {
+                        ProductVisual(product:product,height:54).frame(width:54).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(product.name).font(.system(size: 14, weight: .semibold))
+                            Text("\(rub(product.price)) · цена демо").font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Stepper("Есть дома: \(draft.ownedQuantities[product.id] ?? 0) шт.",
+                            value: Binding(get: { draft.ownedQuantities[product.id] ?? 0 },
+                                           set: { draft.ownedQuantities[product.id] = $0 }), in: 0...1)
+                        .font(.system(size: 13))
+                }
+            }
+            HStack { Text("К покупке · демо"); Spacer(); Text(rub(shoppingTotal)).fontWeight(.bold) }
+                .font(.system(size: 17)).foregroundStyle(Style.ink)
+            Text("Изменение условий пересчитывает комплект; несовместимый крепёж удаляется перед следующим добавлением.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var finishStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionTitle("Работы и результат", "Domino открывает этап только после обязательных предыдущих")
+            ForEach(0..<ShelfProjectData.steps.count, id: \.self) { index in
+                let step = ShelfProjectData.steps[index]
+                let done = draft.completedStepIDs.contains(step.id)
+                let available = done || (EvidenceEngine.shared.canCompleteShelfStep(draft.completedStepIDs, stepID: step.id) ?? false)
+                Button {
+                    draft.completedStepIDs = EvidenceEngine.shared
+                        .toggleShelfStep(draft.completedStepIDs,stepID:step.id) ?? draft.completedStepIDs
+                } label: {
+                    HStack(spacing: 11) {
+                        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(done ? Style.blue : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(step.title).foregroundStyle(Style.ink)
+                            Text(available ? "Можно выполнить" : "Сначала завершите предыдущий этап")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }.frame(minHeight: 44)
+                }.disabled(!available).buttonStyle(OmaPressButtonStyle())
+            }
+            if !dominoValid {
+                Text("Порядок ещё не завершён. Зависимый этап нельзя отметить раньше обязательных предыдущих.")
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Style.orange)
+            }
+            Divider()
+            sectionTitle("Proof", "Личная запись результата, не проверка специалистом")
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label(draft.hasProofPhoto ? "Заменить фото результата" : "Прикрепить фото результата", systemImage: "photo")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            if draft.hasProofPhoto { Text("Фото сохранено локально на устройстве").font(.system(size: 12)).foregroundStyle(.secondary) }
+            Button("Записать выполнение со слов пользователя") {
+                saveDraft(); store.complete(draft.id); message = store.lastMessage
+            }
+            .disabled(readiness != .candidate || !draft.allStepsDone || !dominoValid)
+            .font(.system(size: 14, weight: .semibold))
+            if isRecorded { Text("Выполнение записано · экспертной проверки нет").foregroundStyle(Style.blue) }
+        }.padding(18).modifier(OmaCardSurface(radius: 16))
+    }
+
+    private var wizardActions: some View {
+        HStack(spacing: 10) {
+            if currentStep > 0 {
+                Button("Назад") { currentStep -= 1 }
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(minWidth: 86, minHeight: 50)
+                    .background(Style.paleBlue, in: RoundedRectangle(cornerRadius: 10))
+            }
+            Button(nextTitle) { advance() }
+                .font(.system(size: 14, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .foregroundStyle(canAdvance ? .white : Style.ink)
+                .background(canAdvance ? Style.cyan : Style.line, in: RoundedRectangle(cornerRadius: 10))
+                .disabled(!canAdvance)
+                .accessibilityIdentifier("shelf.next")
+        }
+    }
+
+    private var canAdvance: Bool {
+        switch currentStep {
+        case 0: return draft.wall != .unknown && draft.fastener != .none && draft.shelfWeightKg > 0 && draft.plannedLoadKg > 0
+        case 1: return readiness == .candidate
+        case 2: return readiness == .candidate && zeroResult != nil
+        default: return true
+        }
+    }
+
+    private var nextTitle: String {
+        switch currentStep {
+        case 0: "Далее: проверка"
+        case 1: readiness == .blocked ? "Комплект заблокирован" : "Далее: комплект"
+        case 2: "Добавить комплект и далее"
+        default: hasSavedProject ? "Сохранить изменения" : "Сохранить проект"
+        }
+    }
+
+    private func advance() {
+        saveDraft()
+        if currentStep == 2 { addShoppingList(); return }
+        if currentStep < 3 { currentStep += 1 }
+        else { message = store.lastMessage }
     }
 
     private func sectionTitle(_ title: String, _ detail: String) -> some View {
@@ -1855,15 +2158,440 @@ private struct ShelfFlowScreen: View {
 
     private func addShoppingList() {
         guard zeroResult != nil else { message = "Локальный расчёт недоступен"; return }
+        // Replace the previous local shelf kit instead of accumulating incompatible quantities.
+        ["p07", "p08", "p09", "p25"].forEach(store.remove)
         for item in zeroItems {
             guard let id = item["id"] as? String, let count = (item["toBuy"] as? NSNumber)?.intValue,
                   listProducts.contains(where: { $0.id == id }), count > 0 else { continue }
             store.add(id, qty: count)
         }
         store.saveShelf(draft, amount: shoppingTotal)
-        withAnimation(reduceMotion ? nil : OmaMotion.change) {
-            selectedTab = .cart
-            showONE = false
+        message = "Комплект обновлён с учётом домашних запасов"
+        withAnimation(reduceMotion ? nil : OmaMotion.change) { currentStep = 3 }
+    }
+}
+
+
+// MARK: - OMA VIBE: separate optional lifestyle mode, connected to the same Store.
+// Interior pictures are synthetic references; not a scan, installed design or real catalog.
+private enum VibeStyle {
+    static let indigo = Color(red: 0.188, green: 0.169, blue: 0.482)
+    static let cyan = Color(red: 0.075, green: 0.678, blue: 0.761)
+    static let coral = Color(red: 1.0, green: 0.439, blue: 0.345)
+    static let cream = Color(red: 0.969, green: 0.961, blue: 0.941)
+    static let ink = Color(red: 0.125, green: 0.129, blue: 0.169)
+    static let lavender = Color(red: 0.925, green: 0.914, blue: 0.961)
+}
+private struct VibeExperience: View {
+    @ObservedObject var store: Store
+    @Binding var enabled: Bool
+    @Binding var classicTab: Tab
+    @Binding var showONE: Bool
+    @Binding var startTwin: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var screen = "welcome"
+    @AppStorage("oma_vibe_style") private var chosenStyle = "Soft Loft"
+    @AppStorage("oma_vibe_saved") private var vibeSaved = false
+    @AppStorage("oma_vibe_nodrill") private var noDrill = true
+    @AppStorage("oma_vibe_owned_storage") private var ownedStorage = false
+
+    private var suggested: [Product] {
+        ["p18", "p20"].compactMap { store.product($0) }
+    }
+    private var suggestedTotal: Double {
+        suggested.reduce(0) { $0 + (($1.id == "p20" && ownedStorage) ? 0 : $1.price) }
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("ОМА").font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(VibeStyle.coral)
+                Text("VIBE").font(.system(size: 17, weight: .black, design: .rounded))
+                    .foregroundStyle(VibeStyle.indigo)
+                Spacer()
+                Button {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) { enabled = false; classicTab = .home }
+                } label: {
+                    Label("Обычный ОМА", systemImage: "arrow.uturn.backward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(VibeStyle.indigo)
+                        .padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(.white, in: Capsule())
+                }
+                .accessibilityIdentifier("oma.vibe.exit")
+            }
+            .padding(.horizontal, 20).padding(.top, 11).padding(.bottom, 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    switch screen {
+                    case "welcome": welcome
+                    case "styles": stylesPage
+                    case "studio": studioPage
+                    case "materials": materialsPage
+                    case "projects": projectsPage
+                    case "profile": profilePage
+                    default: homePage
+                    }
+                    Text("Неофициальный концепт · визуализация и цены демонстрационные · нет заказа в системах ОМА")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if screen != "welcome" {
+                HStack(spacing: 2) {
+                    navButton("house", "VIBE", "home")
+                    navButton("sparkles.rectangle.stack", "Стили", "styles")
+                    navButton("square.on.square", "Комната", "studio")
+                    navButton("bag", "Материалы", "materials")
+                    navButton("person", "Профиль", "profile")
+                }
+                .padding(.horizontal, 8).padding(.vertical, 7)
+                .background(.white)
+            }
+        }
+        .background(VibeStyle.cream)
+        .tint(VibeStyle.indigo)
+        .accessibilityIdentifier("oma.vibe.mode")
+    }
+    private func go(_ next: String) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { screen = next }
+    }
+    private func navButton(_ icon: String, _ title: String, _ target: String) -> some View {
+        Button { go(target) } label: {
+            VStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 19))
+                Text(title).font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(screen == target ? VibeStyle.indigo : .gray)
+            .frame(maxWidth: .infinity).frame(minHeight: 49)
+        }
+        .accessibilityLabel(title)
+    }
+    private func pillButton(_ label: String, _ target: String, coral: Bool = false) -> some View {
+        Button { go(target) } label: {
+            Text(label).font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white).frame(maxWidth: .infinity).frame(minHeight: 51)
+                .background(coral ? VibeStyle.coral : VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+    private func hero(_ image: String, height: CGFloat = 260) -> some View {
+        Image(image).resizable().scaledToFill().frame(maxWidth: .infinity)
+            .frame(height: height).clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .accessibilityLabel("Синтетическая интерьерная визуализация, не фотография реальной квартиры")
+    }
+    private var welcome: some View {
+        VStack(alignment: .leading, spacing: 17) {
+            Text("НОВЫЙ РЕЖИМ").font(.system(size: 12, weight: .black)).tracking(2)
+                .foregroundStyle(VibeStyle.cyan)
+            Text("Добро пожаловать\nв свой VIBE ✦")
+                .font(.system(size: 36, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+                .fixedSize(horizontal: false, vertical: true)
+            hero("VibeBedroom", height: 338)
+            Text("Не просто выбирай товары. Найди свой стиль и составь понятный план преображения комнаты.")
+                .font(.system(size: 16)).foregroundStyle(VibeStyle.ink)
+            pillButton("Создать свой вайб →", "home", coral: true)
+        }
+    }
+    private var homePage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Твой дом.\nТвой вайб.")
+                .font(.system(size: 39, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+                .fixedSize(horizontal: false, vertical: true)
+            ZStack(alignment: .bottomLeading) {
+                hero("VibeBedroom", height: 315)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("SOFT LOFT / МИНСК").font(.system(size: 11, weight: .bold)).tracking(1)
+                    Text("Твоя первая квартира — твоя история")
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 24))
+            }
+            pillButton("Преобразить мою комнату ✨", "studio", coral: true)
+            Text("Идеи для тебя").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(VibeStyle.ink)
+            HStack(spacing: 12) {
+                Button { go("styles") } label: { smallImageCard("VibeLiving", title: "Найди свой стиль") }
+                Button { go("materials") } label: { smallImageCard("VibeBedroom", title: "До своего бюджета") }
+            }
+        }
+    }
+    private func smallImageCard(_ image: String, title: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(image).resizable().scaledToFill().frame(height: 105).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(VibeStyle.ink)
+        }
+        .frame(maxWidth: .infinity).padding(9)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+    }
+    private var stylesPage: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Какой интерьер — твой?")
+                .font(.system(size: 31, weight: .heavy, design: .rounded)).foregroundStyle(VibeStyle.indigo)
+            Text("Выбери настроение. Мы покажем концептуальный референс и доступные следующие шаги.")
+                .font(.subheadline).foregroundStyle(.secondary)
+            ForEach(["Soft Loft", "Japandi", "Cozy Minimal", "Scandinavian"], id: \.self) { name in
+                Button {
+                    chosenStyle = name
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(name == "Soft Loft" ? "VibeBedroom" : "VibeLiving")
+                            .resizable().scaledToFill().frame(width: 94, height: 92).clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(name).font(.system(size: 18, weight: .bold))
+                            Text(name == chosenStyle ? "Выбрано" : "Посмотреть стиль")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: name == chosenStyle ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(VibeStyle.indigo)
+                    }.padding(10).background(.white, in: RoundedRectangle(cornerRadius: 19))
+                        .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(name == chosenStyle ? VibeStyle.cyan : .clear, lineWidth: 2))
+                }
+                .foregroundStyle(VibeStyle.ink)
+            }
+            pillButton("Продолжить с \(chosenStyle)", "studio")
+        }
+    }
+    private var studioPage: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Моя спальня").font(.system(size: 33, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            HStack {
+                tag("13 м²")
+                tag("Съёмная квартира")
+                tag("Бюджет 1 200 BYN")
+            }
+            hero("VibeBedroom", height: 315)
+            Text("Образ комнаты · \(chosenStyle)")
+                .font(.system(size: 20, weight: .bold)).foregroundStyle(VibeStyle.ink)
+            Text("Это синтетическая иллюстрация целевого интерьера, а не AI-преображение фотографии твоей комнаты.")
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+            Toggle("Без сверления и необратимых изменений", isOn: $noDrill)
+                .font(.system(size: 14, weight: .semibold))
+                .tint(VibeStyle.cyan)
+                .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 16))
+            pillButton("Составить план и товары", "materials", coral: true)
+        }
+    }
+    private func tag(_ text: String) -> some View {
+        Text(text).font(.system(size: 11, weight: .bold))
+            .foregroundStyle(VibeStyle.indigo).padding(.horizontal, 10)
+            .padding(.vertical, 8).background(.white, in: Capsule())
+    }
+    private var materialsPage: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Сделать это у себя").font(.system(size: 31, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            Text("Доступные товары демонстрационного каталога ОМА. Для полного интерьера ассортимент потребуется расширить.")
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+            HStack {
+                Text("Предварительный список").font(.headline)
+                Spacer()
+                Text(rub(suggestedTotal)).font(.headline).foregroundStyle(VibeStyle.indigo)
+            }.padding(15).background(.white, in: RoundedRectangle(cornerRadius: 16))
+            Toggle("Обувница уже есть дома (ZeroBuy)", isOn: $ownedStorage)
+                .font(.system(size: 13, weight: .medium)).tint(VibeStyle.cyan)
+                .padding(14).background(VibeStyle.lavender, in: RoundedRectangle(cornerRadius: 16))
+            ForEach(suggested) { product in
+                HStack(spacing: 12) {
+                    ProductVisual(product: product, height: 82).frame(width: 82)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(product.name).font(.system(size: 14, weight: .bold))
+                        Text(rub(product.price)).font(.system(size: 13)).foregroundStyle(VibeStyle.indigo)
+                        Button("Добавить в общую корзину") { store.add(product.id) }
+                            .font(.system(size: 12, weight: .bold)).foregroundStyle(VibeStyle.coral)
+                            .disabled(product.id == "p20" && ownedStorage)
+                    }
+                    Spacer(minLength: 0)
+                }.padding(12).background(.white, in: RoundedRectangle(cornerRadius: 18))
+            }
+            if noDrill {
+                Label("Для съёмной квартиры не предлагаем крепёж без проверки условий. Сверление исключено из этого демонстрационного плана.", systemImage: "checkmark.shield.fill")
+                    .font(.system(size: 12)).foregroundStyle(VibeStyle.indigo)
+                    .padding(13).background(VibeStyle.lavender, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Button {
+                enabled = false
+                classicTab = .cart
+            } label: {
+                Text("Открыть общую корзину · \(store.cartCount)")
+                    .font(.system(size: 15, weight: .bold)).frame(maxWidth: .infinity)
+                    .frame(minHeight: 50).foregroundStyle(.white)
+                    .background(VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Button {
+                store.saveVibeProject(amount: suggestedTotal)
+                vibeSaved = true
+                go("projects")
+            } label: {
+                Text("Сохранить проект в «Мой дом»").font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity).frame(minHeight: 46)
+            }
+        }
+    }
+    private var projectsPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Мой дом").font(.system(size: 33, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            hero("VibeOverview", height: 240)
+            Text("Моя спальня · \(chosenStyle)").font(.system(size: 22, weight: .bold))
+            Text(vibeSaved ? "Концептуальный проект сохранён в общем кабинете" : "Начни с выбора стиля и сохрани проект")
+                .font(.subheadline).foregroundStyle(.secondary)
+            pillButton("Открыть проект", "studio")
+            Button {
+                startTwin = true
+                showONE = true
+            } label: {
+                Label("Открыть HOME TWIN", systemImage: "house")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(maxWidth: .infinity).frame(minHeight: 48)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Text("HOME TWIN показывает концептуальные рендеры и локальные отметки. Это не строительная экспертиза.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+    }
+    private var profilePage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Твой профиль").font(.system(size: 32, weight: .heavy, design: .rounded))
+                .foregroundStyle(VibeStyle.indigo)
+            Text("Один аккаунт, одна корзина и одна история проектов для двух режимов.")
+                .font(.subheadline)
+            Label("В общей корзине: \(store.cartCount)", systemImage: "bag")
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+            Button("Вернуться в обычный ОМА") { enabled = false; classicTab = .home }
+                .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).frame(minHeight: 52)
+                .background(VibeStyle.indigo, in: RoundedRectangle(cornerRadius: 16))
+            Button("Посмотреть общий каталог") { enabled = false; classicTab = .catalog }
+                .font(.system(size: 15, weight: .semibold)).frame(minHeight: 48)
+        }
+    }
+}
+
+
+// MARK: - Offline demo service request. No real contractor is contacted.
+private struct ServiceRequestScreen: View {
+    @ObservedObject var store: Store
+    let projectID: UUID?
+    @State private var kind: DemoServiceKind = .shelfInstallation
+    @State private var date: Date = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    @State private var slot: DemoServiceSlot = .afternoon
+    @State private var note = ""
+    @State private var feedback = ""
+    @State private var showingConfirmation = false
+
+    private var relatedRequests: [DemoServiceRequest] {
+        store.serviceLedger.requests.filter { request in
+            projectID == nil || request.projectID == projectID
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Label("Помощь мастера", systemImage: "wrench.and.screwdriver")
+                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .foregroundStyle(Style.blue)
+                Text("Спланируйте услугу вместе с покупками. Это локальная демо-заявка: ОМА и мастер её не получают.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Section("Пожелания к услуге") {
+                Picker("Вид услуги", selection: $kind) {
+                    ForEach(DemoServiceKind.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
+                }
+                DatePicker("Предпочтительный день", selection: $date,
+                           in: Date()...(Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()),
+                           displayedComponents: .date)
+                    .accessibilityIdentifier("service.date")
+                Picker("Удобное время", selection: $slot) {
+                    ForEach(DemoServiceSlot.allCases) { item in
+                        Text(item.title).tag(item)
+                    }
+                }
+                TextField("Комментарий (необязательно)", text: $note, axis: .vertical)
+                    .lineLimit(2...4)
+                    .accessibilityIdentifier("service.note")
+                Text("Не указывайте здесь домашний адрес, телефон и другие личные данные. Их некому отправлять в демоверсии.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Предварительная оценка · демо") {
+                HStack {
+                    Text("Условная стоимость услуги")
+                    Spacer()
+                    Text("\(kind.indicativePriceBYN) BYN")
+                        .font(.headline).foregroundStyle(Style.blue)
+                }
+                Text("Цена задана для демонстрации, не является тарифом ОМА или офертой. Доступность исполнителей не проверяется, оплата не производится.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    let result = store.createServiceRequest(projectID: projectID, kind: kind,
+                                                            desiredDay: date, slot: slot, note: note)
+                    switch result {
+                    case .success:
+                        feedback = "Демо-заявка сохранена на устройстве. Мастер не назначен и уведомление не отправлено."
+                        showingConfirmation = true
+                    case .failure(let error):
+                        feedback = error.message
+                        showingConfirmation = true
+                    }
+                } label: {
+                    Label("Сохранить демо-заявку", systemImage: "square.and.arrow.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 45)
+                }
+                .accessibilityIdentifier("service.save")
+            }
+            Section("Мои демо-заявки") {
+                if relatedRequests.isEmpty {
+                    Text("Сохранённых заявок пока нет")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(relatedRequests) { item in
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text(item.kind.title).font(.headline)
+                            Spacer()
+                            Text(item.status.title)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("\(item.desiredDay.formatted(date: .abbreviated, time: .omitted)) · \(item.slot.title) · \(item.indicativePriceBYN) BYN (демо)")
+                            .font(.caption)
+                        if !item.note.isEmpty { Text(item.note).font(.caption).foregroundStyle(.secondary) }
+                        if item.status == .savedLocally {
+                            Button("Отменить демо-заявку", role: .destructive) {
+                                store.cancelServiceRequest(id: item.id)
+                            }
+                            .font(.subheadline)
+                            .accessibilityIdentifier("service.cancel")
+                        }
+                    }
+                    .padding(.vertical, 5)
+                }
+            }
+            Section {
+                Text("Эта функция предназначена только для проверки будущего пользовательского пути. Услуга, доступность мастера и её выполнение не подтверждены.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Style.soft)
+        .navigationTitle("Запрос услуги · демо")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("ОМА", isPresented: $showingConfirmation) {
+            Button("Понятно", role: .cancel) { showingConfirmation = false }
+        } message: {
+            Text(feedback)
         }
     }
 }

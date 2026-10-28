@@ -42,7 +42,8 @@ async function startup(t: TestContext){
   await fs.rm(objectDir,{recursive:true,force:true});
  });
  const url=`http://127.0.0.1:${port}`;
- for(let i=0;i<100;i++){
+ // The first PostgreSQL migration can take longer on shared CI runners.
+ for(let i=0;i<300;i++){
   if(child.exitCode!==null)throw new Error(`Server exited during startup: ${stderr}`);
   try{const response=await fetch(url+'/api/v1/health');if(response.ok)return url;}catch{}
   await new Promise(resolve=>setTimeout(resolve,75));

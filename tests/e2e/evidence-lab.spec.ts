@@ -20,13 +20,15 @@ test('Evidence Lab loads every module, calculates results and fits a 390 px view
  page.on('console',message=>{if(message.type()==='error')javascriptErrors.push(`console: ${message.text()}`);});
  page.on('response',response=>{
   const pathname=new URL(response.url()).pathname;
-  if(['/proof.html','/proof.css','/proof-ui.js'].includes(pathname))resourceResponses.set(pathname,{status:response.status(),contentType:response.headers()['content-type']??''});
+  if(['/proof.html','/proof.css','/proof-ui.js','/icons/oma-logo.jpg'].includes(pathname))resourceResponses.set(pathname,{status:response.status(),contentType:response.headers()['content-type']??''});
  });
 
  const documentResponse=await page.goto('/proof.html',{waitUntil:'networkidle'});
  expect(documentResponse?.status()).toBe(200);
  expect(documentResponse?.headers()['content-type']).toContain('text/html');
  await expect(page.locator('#moduleNav button')).toHaveCount(modules.length);
+ await expect(page.locator('header .brand img.brand-symbol')).toBeVisible();
+ expect(resourceResponses.get('/icons/oma-logo.jpg')).toEqual({status:200,contentType:expect.stringContaining('image/jpeg')});
  expect(resourceResponses.get('/proof.html')).toEqual({status:200,contentType:expect.stringContaining('text/html')});
  expect(resourceResponses.get('/proof.css')).toEqual({status:200,contentType:expect.stringContaining('text/css')});
  expect(resourceResponses.get('/proof-ui.js')).toEqual({status:200,contentType:expect.stringContaining('javascript')});
