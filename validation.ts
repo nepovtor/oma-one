@@ -47,6 +47,7 @@ export const schemas={
  }).strict().refine(value=>!value.stepIds||new Set(value.stepIds).size===value.stepIds.length,{message:'Этапы не должны повторяться'}),
  projectVerify:z.object({note:text(900).default('')}).strict(),
  cartItem:z.object({productId:id,quantity:positiveInt(200)}).strict(),
+ cartQuantity:z.object({quantity:positiveInt(200)}).strict(),
  groupCreate:z.object({title:text(100,1),category:text(80,1),target:positiveInt(100).min(2),basePrice:money.max(50_000),description:text(250).optional(),date:text(20).optional()}).strict(),
  pulseReport:z.object({category:text(80).default('Другое'),model:text(80).default(''),symptom:text(450,8)}).strict(),
  dnaMatch:z.object({room:text(80),area:z.number().finite().min(.5).max(1_000)}).strict(),

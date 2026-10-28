@@ -125,3 +125,12 @@ h1 {font-weight:760;line-height:1.16;}
 @media(max-width:480px) {.app-sheet {padding-left:16px;padding-right:16px;}.shelf-wizard {gap:12px;}.wizard-card {padding:18px 16px;}.wizard-actions {align-items:stretch;}.wizard-actions .btn {width:100%;}.wizard-summary {grid-template-columns:88px 1fr;padding:12px;}.wizard-summary>img {height:74px;}.journey-steps {overflow-x:auto;}.journey-steps>div {min-width:54px;}.journey-steps strong {display:none;}}
 @media(prefers-reduced-motion:reduce) {button,a,img {transition:none!important;transform:none!important;}}
 @media(prefers-contrast:more) {:root {--muted:#42425e;--line:#9899b5;--control:#6a6a89;}.btn,.nav-item.active,.card {border-width:2px;}}
+
+.oma-qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:9px;background:#fff}
+.oma-qty button{width:36px;min-height:38px;border:0;background:#eef5f8;color:var(--accent);font-size:21px;cursor:pointer}
+.oma-qty button:disabled{opacity:.35;cursor:not-allowed}
+.oma-qty input{width:58px;min-height:38px;border:0;border-inline:1px solid var(--line);text-align:center;color:var(--text);font-size:15px;background:white;appearance:textfield}
+.oma-qty input::-webkit-inner-spin-button,.oma-qty input::-webkit-outer-spin-button{appearance:none}
+.oma-remove{margin-top:8px;border:0;background:transparent;color:#a33b4b;font-weight:650;padding:8px 0;cursor:pointer}
+.cart-product .text-right{min-width:130px;display:flex;flex-direction:column;align-items:flex-end}
+@media(max-width:530px){.cart-product{flex-wrap:wrap}.cart-product .main-info{flex:1 1 47%}.cart-product .text-right{flex:1 1 100%;align-items:flex-start}}

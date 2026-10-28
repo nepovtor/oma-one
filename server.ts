@@ -214,6 +214,14 @@ async function route(ctx: RequestContext): Promise<unknown>{
   const input=parse(schemas.cartItem,ctx.data);return store.mutate(mutationMeta(ctx,'cart.item_added','cart',ctx.user.id,{productId:input.productId,quantity:input.quantity}),state=>{const user=getUser(state,ctx.user.id),product=pick(state.products,input.productId),item=user.cart.find(value=>value.productId===product.id);if(item){if(item.quantity+input.quantity>200)throw err('Количество превышает лимит',422,'QUANTITY_LIMIT');item.quantity+=input.quantity;}else user.cart.push({id:id('cart'),productId:product.id,quantity:input.quantity});return {cart:user.cart};});
  }
  const cartMatch=pathname.match(/^\/cart\/items\/([^/]+)$/);
+ if(method==='PATCH'&&cartMatch){
+  const {quantity}=parse(schemas.cartQuantity,ctx.data);
+  return store.mutate(mutationMeta(ctx,'cart.quantity_changed','cart_item',cartMatch[1],{quantity}),state=>{
+   const user=getUser(state,ctx.user.id),item=user.cart.find(value=>value.id===cartMatch[1]);
+   if(!item)throw err('Объект не найден',404,'NOT_FOUND');
+   item.quantity=quantity;return {cart:user.cart};
+  });
+ }
  if(method==='DELETE'&&cartMatch){parse(schemas.empty,ctx.data);return store.mutate(mutationMeta(ctx,'cart.item_deleted','cart_item',cartMatch[1]),state=>{const user=getUser(state,ctx.user.id),before=user.cart.length;user.cart=user.cart.filter(item=>item.id!==cartMatch[1]);if(user.cart.length===before)throw err('Объект не найден',404,'NOT_FOUND');return {cart:user.cart};});}
  if(method==='POST'&&pathname==='/cart/import-plan'){
   const input=parse(schemas.calculationRef,ctx.data);return store.mutate(mutationMeta(ctx,'cart.plan_imported','cart',ctx.user.id,{calculationId:input.calculationId}),state=>{const user=getUser(state,ctx.user.id),calculation=findCalculation(state,ctx,input.calculationId);for(const planned of calculation.plan.items){if(!planned.purchase)continue;const product=pick(state.products,planned.productId),quantity=Number(planned.purchase);if(!Number.isInteger(quantity)||quantity<1||quantity>200)throw err('Недопустимое количество',422,'INVALID_QUANTITY');const current=user.cart.find(item=>item.productId===product.id);if(current){if(current.quantity+quantity>200)throw err('Количество превышает лимит',422,'QUANTITY_LIMIT');current.quantity+=quantity;}else user.cart.push({id:id('cart'),productId:product.id,quantity});}return {cart:user.cart};});

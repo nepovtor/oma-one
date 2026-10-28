@@ -19,6 +19,7 @@ export interface ShelfDraft {
   photoDataUrl: string | null;
   photoHash: string | null;
   localCartProductIDs: string[];
+  localCartQuantities: Record<string,number>;
   updatedAt: string;
 }
 
@@ -105,6 +106,7 @@ export function createShelfDraft(now = new Date()): ShelfDraft {
     photoDataUrl: null,
     photoHash: null,
     localCartProductIDs: [],
+    localCartQuantities: {},
     updatedAt: now.toISOString()
   };
 }
@@ -138,6 +140,10 @@ export function normalizeShelfDraft(value: unknown): ShelfDraft {
     localCartProductIDs: Array.isArray(input.localCartProductIDs)
       ? [...new Set(input.localCartProductIDs.filter(id => typeof id === 'string'))]
       : [],
+    localCartQuantities:Object.fromEntries((Array.isArray(input.localCartProductIDs)?input.localCartProductIDs:[]).filter((id):id is string=>typeof id==='string').map(id=>{
+      const q=Number(input.localCartQuantities?.[id]??1);
+      return [id,Number.isInteger(q)?Math.max(1,Math.min(200,q)):1];
+    })),
     updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : fallback.updatedAt
   };
 }
